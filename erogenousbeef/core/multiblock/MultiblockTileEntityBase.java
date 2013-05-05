@@ -14,7 +14,7 @@ import net.minecraft.network.packet.Packet132TileEntityData;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-/*
+/**
  * Base logic class for Multiblock-connected tile entities. Most multiblock machines
  * should derive from this and implement their game logic in certain abstract methods.
  */
@@ -34,10 +34,10 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 	///// Multiblock Connection Base Logic
 	
-	/*
+	/**
 	 * Remember to call super.onBlockAdded() if you derive from this! This performs important
 	 * checks to fuse multiple controllers that are now logically conjoined by the new block.
-	 * @see erogenousbeef.core.multiblock.IMultiblockPart#onBlockAdded(net.minecraft.world.World, int, int, int)
+	 * {@link erogenousbeef.core.multiblock.IMultiblockPart#onBlockAdded(net.minecraft.world.World, int, int, int)}
 	 */
 	@Override
 	public void onBlockAdded(World world, int x, int y, int z) {
@@ -99,20 +99,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		else {
 			this.createNewMultiblock();
 		}
-	}
-	
-	public void onNeighborConnectedToMaster(World world, MultiblockControllerBase multiblockMaster) {
-		if(this.controller == multiblockMaster) {
-			// Re-connect notification. Ignore.
-			return;
-		}
-		
-		// Are we moving to a new master?
-		if(this.controller != null) {
-			detachSelf();
-		}
-		
-		attachSelf(world, multiblockMaster);
 	}
 	
 	///// Overrides from base TileEntity methods

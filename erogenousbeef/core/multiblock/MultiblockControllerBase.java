@@ -10,7 +10,7 @@ import net.minecraft.world.World;
 
 import erogenousbeef.core.common.CoordTriplet;
 
-/*
+/**
  * This class contains the base logic for "multiblock controllers". You can think of them
  * as meta-TileEntities. They govern the logic for an associated group of TileEntities.
  * 
@@ -21,22 +21,48 @@ public abstract class MultiblockControllerBase {
 	private World worldObj;
 	private boolean isWholeMachine;
 	private LinkedList<CoordTriplet> connectedBlocks;
-	private CoordTriplet saveDelegate; // Also the network communication delegate
 	
-	// This is a deterministically-picked coordinate that identifies this
-	// multiblock uniquely in its dimension.
-	// Currently, this is the coord with the lowest X, Y and Z coordinates, in that order of evaluation.
-	// i.e. If something has a lower X but higher Y/Z coordinates, it will still be the reference.
-	// If something has the same X but a lower Y coordinate, it will be the reference. Etc.
+	/**
+	 * The coordinate of the block through which we communicate over the network,
+	 * and to/from which controllers save/load data.
+	 * Generally, this should also be the reference coordinate.
+	 */
+	private CoordTriplet saveDelegate;
+	
+	/** This is a deterministically-picked coordinate that identifies this
+	 * multiblock uniquely in its dimension.
+	 * Currently, this is the coord with the lowest X, Y and Z coordinates, in that order of evaluation.
+	 * i.e. If something has a lower X but higher Y/Z coordinates, it will still be the reference.
+	 * If something has the same X but a lower Y coordinate, it will be the reference. Etc.
+	 */
 	private CoordTriplet referenceCoord;
-	
+
+	 /**
+	  * A cached "initial block". On the first tick recieved by this controller,
+	  * if this is non-null, this coordinate will be checked for an IMachinePart tile entity.
+	  * If one exists, it will be added to this controller.
+	  * This is a trick to allow machines to create themselves during world loading without
+	  * all the blocks having to load their states at once.
+	  */
 	private CoordTriplet cachedBlock;
 
-	// These are the "bounding box" minimum/maximum coords. Note that blocks do not necessarily
-	// have to exist at these coords, if your machine is not a rectangular prism or cube.
+	/**
+	 * Minimum bounding box coordinate. Blocks do not necessarily exist at this coord if your machine
+	 * is not a cube/rectangular prism.
+	 */
 	private CoordTriplet minimumCoord;
+
+	/**
+	 * Maximum bounding box coordinate. Blocks do not necessarily exist at this coord if your machine
+	 * is not a cube/rectangular prism.
+	 */
 	private CoordTriplet maximumCoord;
 	
+	/** 
+	 * Set to true when adding/removing blocks to the controller.
+	 * If true, the controller will check to see if the machine
+	 * should be assembled/disassembled on the next tick.
+	 */
 	private boolean blocksHaveChangedThisFrame;
 	
 	protected MultiblockControllerBase(World world) {
@@ -54,16 +80,31 @@ public abstract class MultiblockControllerBase {
 		blocksHaveChangedThisFrame = false;
 	}
 
+	/**
+	 * Call when the save delegate block loads.
+	 * @param initialBlock The coordinate of the block which is loading data into this controller.
+	 * @param savedData The NBT tag containing this controller's data.
+	 */
 	public void loadAndCacheInitialBlock(CoordTriplet initialBlock, NBTTagCompound savedData) {
 		this.readFromNBT(savedData);
 		cachedBlock = initialBlock;
 		MultiblockRegistry.register(this);
 	}
 	
+	/**
+	 * Check if a block is being tracked by this machine.
+	 * @param blockCoord Coordinate to check.
+	 * @return True if the tile entity at blockCoord is being tracked by this machine, false otherwise.
+	 */
 	public boolean hasBlock(CoordTriplet blockCoord) {
 		return connectedBlocks.contains(blockCoord);
 	}
 	
+	/**
+	 * Call this to attach a block to this machine. Generally, you want to call this when
+	 * the block is added to the world.
+	 * @param part The part representing the block to attach to this machine.
+	 */
 	public void attachBlock(IMultiblockPart part) {
 		IMultiblockPart candidate;
 		CoordTriplet coord;
@@ -116,6 +157,11 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 	
+	/**
+	 * Call to detach a block from this machine. Generally, this should be called
+	 * when the tile entity is being released, e.g. on block destruction.
+	 * @param part The part to detach from this machine.
+	 */
 	public void detachBlock(IMultiblockPart part) {
 		CoordTriplet coord = part.getWorldLocation();
 		
@@ -158,7 +204,7 @@ public abstract class MultiblockControllerBase {
 		this.recalculateDistances();
 		
 		// Perform fission. Can result in up to 6 new TEs.
-		doFission(coord);
+		doFission();
 		
 		// Find new save delegate if we need to.
 		if(saveDelegate == null) {
@@ -168,7 +214,10 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 
-	private void doFission(CoordTriplet center) {
+	/**
+	 * Helper function. Check for orphans and create new machines until there are no more orphaned blocks.
+	 */
+	private void doFission() {
 		// First, remove any blocks that are still disconnected.
 		IMultiblockPart part;
 		List<IMultiblockPart> orphans = new LinkedList<IMultiblockPart>();
@@ -193,20 +242,18 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 
-	protected void getMinMaxCoords(CoordTriplet minCoord, CoordTriplet maxCoord) {
-		// Find min/max coordinates
-		for(CoordTriplet coord : connectedBlocks) {
-			if(coord.x < minCoord.x) { minCoord.x = coord.x; }
-			if(coord.x > maxCoord.x) { maxCoord.x = coord.x; } 
-			if(coord.y < minCoord.y) { minCoord.y = coord.y; }
-			if(coord.y > maxCoord.y) { maxCoord.y = coord.y; } 
-			if(coord.z < minCoord.z) { minCoord.z = coord.z; }
-			if(coord.z > maxCoord.z) { maxCoord.z = coord.z; } 
-		}
-	}
-	
+	/**
+	 * Helper method so we don't check for a whole machine until we have enough blocks
+	 * to actually assemble it. This isn't as simple as xmax*ymax*zmax for non-cubic machines
+	 * or for machines with hollow/complex interiors.
+	 * @return The minimum number of blocks connected to the machine for it to be assembled.
+	 */
 	protected abstract int getMinimumNumberOfBlocksForAssembledMachine();
 
+	// TODO: Move this implementation up to the game logic level.
+	/**
+	 * @return True if the machine is "whole" and should be assembled. False otherwise.
+	 */
 	protected boolean isMachineWhole() {
 		if(connectedBlocks.size() >= getMinimumNumberOfBlocksForAssembledMachine()) {
 			// Now we run a simple check on each block within that volume.
@@ -289,43 +336,69 @@ public abstract class MultiblockControllerBase {
 		return false;
 	}
 	
+	/**
+	 * Check if the machine is whole or not.
+	 * If the machine was not whole, but now is, assemble the machine.
+	 * If the machine was whole, but no longer is, disassemble the machine.
+	 */
 	protected void checkIfMachineIsWhole() {
 		boolean wasWholeMachine = this.isWholeMachine;
 		this.isWholeMachine = isMachineWhole();
 		
 		if(!wasWholeMachine && isWholeMachine) {
-			assembleMachine(this.worldObj);
+			assembleMachine();
 		}
 		else if(wasWholeMachine && !isWholeMachine) {
-			disassembleMachine(this.worldObj);
+			disassembleMachine();
 		}
 	}
 	
-	protected void assembleMachine(World world) {
+	/**
+	 * Called when a machine becomes "whole" and should begin
+	 * functioning as a game-logically finished machine.
+	 * Calls onMachineAssembled on all attached parts.
+	 */
+	protected void assembleMachine() {
 		TileEntity te;
 		for(CoordTriplet coord : connectedBlocks) {
-			te = world.getBlockTileEntity(coord.x, coord.y, coord.z);
+			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
 			if(te instanceof IMultiblockPart) {
 				((IMultiblockPart)te).onMachineAssembled();
 			}
 		}
 	}
 	
-	protected void disassembleMachine(World world) {
+	/**
+	 * Called when the machine needs to be disassembled.
+	 * It is not longer "whole" and should not be functional, usually
+	 * as a result of a block being removed.
+	 * Called onMachineBroken on all attached parts.
+	 */
+	protected void disassembleMachine() {
 		TileEntity te;
 		for(CoordTriplet coord : connectedBlocks) {
-			te = world.getBlockTileEntity(coord.x, coord.y, coord.z);
+			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
 			if(te instanceof IMultiblockPart) {
 				((IMultiblockPart)te).onMachineBroken();
 			}
 		}
 	}
-	
-	public void beginMerging() {
-		// ???
-	}
-	
-	// endMerging() MUST be called after 1 or more merge() calls.
+
+	/**
+	 * Called before other machines are merged into this one.
+	 */
+	public void beginMerging() { }
+
+	/**
+	 * Merge another controller into this controller.
+	 * Acquire all of the other controller's blocks and attach them
+	 * to this machine.
+	 * 
+	 * NOTE: endMerging MUST be called after 1 or more merge calls!
+	 * 
+	 * @param other The controller to merge into this one.
+	 * {@link erogenousbeef.core.multiblock.MultiblockControllerBase#endMerging()}
+	 */
 	public void merge(MultiblockControllerBase other) {
 		if(this.referenceCoord.compareTo(other.referenceCoord) >= 0) {
 			throw new IllegalArgumentException("The controller with the lowest minimum-coord value must consume the one with the higher coords");
@@ -345,8 +418,12 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 	
+	/**
+	 * Called when this machine is consumed by another controller.
+	 * Essentially, forcibly tear down this object.
+	 */
 	private void onConsumedByOtherController() {
-		this.disassembleMachine(this.worldObj);
+		this.disassembleMachine();
 		this.referenceCoord = null;
 		TileEntity te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);
 		((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
@@ -355,10 +432,21 @@ public abstract class MultiblockControllerBase {
 		MultiblockRegistry.unregister(this);
 	}
 
+	/**
+	 * Called after all multiblock machine merges have been completed for
+	 * this machine.
+	 */
 	public void endMerging() {
 		this.recalculateDistances();
 	}
 	
+	// TODO: Change this so that people can safely override a business-logic callback
+	// and don't need to call super.
+	/**
+	 * The update loop! Implement the game logic you would like to execute
+	 * on every world tick here.
+	 * Make damned sure to call super.updateMultiblockEntity()!
+	 */
 	public void updateMultiblockEntity() {
 		if(cachedBlock != null) {
 			// First frame
@@ -383,6 +471,10 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 
+	/**
+	 * Recalculates the walk distance from the reference coordinate to
+	 * all other connected blocks.
+	 */
 	protected void recalculateDistances() {
 		TileEntity te;
 		// Reset all distances and find the minimum coordinate
@@ -440,43 +532,84 @@ public abstract class MultiblockControllerBase {
 	}
 	
 	// Validation helpers
+	/**
+	 * The "frame" consists of the outer edges of the machine, plus the corners.
+	 * 
+	 * @param world World object for the world in which this controller is located.
+	 * @param x X coordinate of the block being tested
+	 * @param y Y coordinate of the block being tested
+	 * @param z Z coordinate of the block being tested
+	 * @return True if this block can be used as part of the frame.
+	 */
 	protected boolean isBlockGoodForFrame(World world, int x, int y, int z) {
 		return false;
 	}
 
-	// Any casing block or control rod, plus glass
+	/**
+	 * The top consists of the top face, minus the edges.
+	 * @param world World object for the world in which this controller is located.
+	 * @param x X coordinate of the block being tested
+	 * @param y Y coordinate of the block being tested
+	 * @param z Z coordinate of the block being tested
+	 * @return True if this block can be used as part of the top face.
+	 */
 	protected boolean isBlockGoodForTop(World world, int x, int y, int z) {
 		return false;
 	}
 	
-	// Casing and glass only
+	/**
+	 * The bottom consists of the bottom face, minus the edges.
+	 * @param world World object for the world in which this controller is located.
+	 * @param x X coordinate of the block being tested
+	 * @param y Y coordinate of the block being tested
+	 * @param z Z coordinate of the block being tested
+	 * @return True if this block can be used as part of the bottom face.
+	 */
 	protected boolean isBlockGoodForBottom(World world, int x, int y, int z) {
 		return false;
 	}
 	
-	// Casing and parts, but no control rods, plus glass.
+	/**
+	 * The sides consists of the N/E/S/W-facing faces, minus the edges.
+	 * @param world World object for the world in which this controller is located.
+	 * @param x X coordinate of the block being tested
+	 * @param y Y coordinate of the block being tested
+	 * @param z Z coordinate of the block being tested
+	 * @return True if this block can be used as part of the sides.
+	 */
 	protected boolean isBlockGoodForSides(World world, int x, int y, int z) {
 		return false;
 	}
 	
-	// Yellorium fuel rods, water and air.
+	/**
+	 * The interior is any block that does not touch blocks outside the machine.
+	 * @param world World object for the world in which this controller is located.
+	 * @param x X coordinate of the block being tested
+	 * @param y Y coordinate of the block being tested
+	 * @param z Z coordinate of the block being tested
+	 * @return True if this block can be used as part of the sides.
+	 */
 	protected boolean isBlockGoodForInterior(World world, int x, int y, int z) {
 		return false;
 	}
 	
+	/**
+	 * @return The coordinate of the save-delegate block.
+	 */
 	public CoordTriplet getDelegateLocation() { return saveDelegate; }
+	
+	/**
+	 * @return The reference coordinate, the block with the lowest x, y, z coordinates, evaluated in that order.
+	 */
 	public CoordTriplet getReferenceCoord() { return referenceCoord; }
+	
+	/**
+	 * @return The number of blocks connected to this controller.
+	 */
 	public int getNumConnectedBlocks() { return connectedBlocks.size(); }
 
-	public void writeToNBT(NBTTagCompound data) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readFromNBT(NBTTagCompound data) {
-		// TODO Auto-generated method stub
-		
-	}
+	public abstract void writeToNBT(NBTTagCompound data);
+	public abstract void readFromNBT(NBTTagCompound data);
 	
 	private void recalculateMinMaxCoords() {
 		minimumCoord.x = minimumCoord.y = minimumCoord.z = Integer.MAX_VALUE;
@@ -492,6 +625,13 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 	
+	/**
+	 * @return The minimum bounding-box coordinate containing this machine's blocks.
+	 */
 	public CoordTriplet getMinimumCoord() { return minimumCoord.copy(); }
+
+	/**
+	 * @return The maximum bounding-box coordinate containing this machine's blocks.
+	 */
 	public CoordTriplet getMaximumCoord() { return maximumCoord.copy(); }
 }
