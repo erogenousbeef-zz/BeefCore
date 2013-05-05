@@ -1,30 +1,3 @@
-BeefCore
-========
-
-What is this?
--------------
-
-BeefCore is the core library for my Minecraft mods. At the moment, it contains:
-
-- A multiblock library for making irregularly-shaped multiblock machines
--- erogenousbeef.core.multiblock
-- A testing mod for testing the above libraries
--- erogenousbeef.test
-
-How do I use it?
-----------------
-
-At the moment, you don't! I only have one active mod, Big Reactors, and I always bundle the latest version of BeefCore into it, so you don't need to download or deal with multiple mods.
-
-If you'd like to check out the code, though, be my guest.
-
-License
--------
-
-Licenses for Minecraft mods are silly. If you want to use my mods, do it, have fun. If you want to use, copy or fork my code, do it, have fun.
-
-But, because some people insist, from LICENSE.txt:
-
 The MIT License (MIT)
 
 Copyright (c) 2013 "Erogenous Beef"
