@@ -96,7 +96,12 @@ public interface IMultiblockPart {
 	 * and transmitting data across the wire.
 	 */
 	public void forfeitMultiblockSaveDelegate();
-	
+
+	/*
+	 * Is this block the designated save/load & network delegate?
+	 */
+	public boolean isMultiblockSaveDelegate();	
+
 	/*
 	 * Returns an array containing references to neighboring IMultiblockPart tile entities.
 	 * Primarily a utility method. Only works after tileentity construction, so it cannot be used in
@@ -124,7 +129,7 @@ public interface IMultiblockPart {
 	 * @param machineMinCoords The minimum x,y,z coordinates present in the machine.
 	 * @param machineMaxCoords the maximum x,y,z coordinates present in the machine.
 	 */
-	public void onMachineAssembled(CoordTriplet machineMinCoords, CoordTriplet machineMaxCoords);
+	public void onMachineAssembled();
 	
 	/*
 	 * Called when the machine is broken, generally due to the removal of a block.

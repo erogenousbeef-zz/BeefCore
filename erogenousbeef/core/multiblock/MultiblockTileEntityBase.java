@@ -59,7 +59,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 				remotePart = (IMultiblockPart)remoteTE;
 				if(remotePart.isConnected()) {
 					if(!controllers.contains(remotePart.getMultiblockController())) {
-						if(connectionTarget == null || connectionTarget.getMultiblockController().getMinimumCoord().compareTo(remotePart.getMultiblockController().getMinimumCoord()) > 0) {
+						if(connectionTarget == null || connectionTarget.getMultiblockController().getReferenceCoord().compareTo(remotePart.getMultiblockController().getReferenceCoord()) > 0) {
 							// Different machine controller, better target. Or first controller encountered.
 							connectionTarget = remotePart;
 						}
@@ -87,10 +87,10 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 			if(controllers.size() > 0) {
 				// Oh shit it's merge time
-				CoordTriplet hostLoc = this.controller.getMinimumCoord();
+				CoordTriplet hostLoc = this.controller.getReferenceCoord();
 				this.controller.beginMerging();
 				for(MultiblockControllerBase controllerToMerge : controllers) {
-					CoordTriplet mergeLoc = controllerToMerge.getMinimumCoord();
+					CoordTriplet mergeLoc = controllerToMerge.getReferenceCoord();
 					this.controller.merge(controllerToMerge);
 				}
 				this.controller.endMerging();
@@ -243,8 +243,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	///// Game logic callbacks (IMultiblockPart)
 	
 	@Override
-	public abstract void onMachineAssembled(CoordTriplet machineMinCoords,
-			CoordTriplet machineMaxCoords);
+	public abstract void onMachineAssembled();
 
 	@Override
 	public abstract void onMachineBroken();
@@ -281,6 +280,9 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void forfeitMultiblockSaveDelegate() {
 		this.saveMultiblockData = false;
 	}
+	
+	@Override
+	public boolean isMultiblockSaveDelegate() { return this.saveMultiblockData; }
 
 	@Override
 	public int getDistanceFromReferenceCoord() {
@@ -357,7 +359,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	/*
 	 * Get a list containing the six coordinates neighboring this one.
 	 */
-	private CoordTriplet[] getNeighborCoords() {
+	protected CoordTriplet[] getNeighborCoords() {
 		// It's important that these are in sorted order. MinX-MinY-MinZ-MaxZ-MaxY-MaxX
 		return new CoordTriplet[] {
 				new CoordTriplet(this.xCoord-1, this.yCoord, this.zCoord),
