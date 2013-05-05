@@ -2,14 +2,19 @@ package erogenousbeef.core.common;
 
 import net.minecraftforge.common.ForgeDirection;
 
+/*
+ * Simple wrapper class for XYZ coordinates.
+ */
 public class CoordTriplet implements Comparable {
 	public int x, y, z;
+
 	public CoordTriplet(int x, int y, int z) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
 	}
 	
+	@Override
 	public boolean equals(Object other) {
 		if(other == null)
 		{ return false; }
@@ -34,6 +39,29 @@ public class CoordTriplet implements Comparable {
 		hash = 71 * hash + this.z;
 		return hash;
 	}
+
+	public CoordTriplet copy() {
+		return new CoordTriplet(x, y, z);
+	}
+
+	///// IComparable
+	
+	@Override
+	public int compareTo(Object o) {
+		if(o instanceof CoordTriplet) {
+			CoordTriplet other = (CoordTriplet)o;
+			if(this.x < other.x) { return -1; }
+			else if(this.x > other.x) { return 1; }
+			else if(this.y < other.y) { return -1; }
+			else if(this.y > other.y) { return 1; }
+			else if(this.z < other.z) { return -1; }
+			else if(this.z > other.z) { return 1; }
+			else { return 0; }
+		}
+		return 0;
+	}
+	
+	///// Really confusing code that should be cleaned up
 	
 	public ForgeDirection getDirectionFromSourceCoords(int x, int y, int z) {
 		if(this.x < x) { return ForgeDirection.WEST; }
@@ -53,25 +81,5 @@ public class CoordTriplet implements Comparable {
 		else if(this.z < z) { return ForgeDirection.NORTH; }
 		else if(this.z > z) { return ForgeDirection.SOUTH; }
 		else { return ForgeDirection.UNKNOWN; }
-		
-	}
-
-	public CoordTriplet copy() {
-		return new CoordTriplet(x, y, z);
-	}
-
-	@Override
-	public int compareTo(Object o) {
-		if(o instanceof CoordTriplet) {
-			CoordTriplet other = (CoordTriplet)o;
-			if(this.x < other.x) { return -1; }
-			else if(this.x > other.x) { return 1; }
-			else if(this.y < other.y) { return -1; }
-			else if(this.y > other.y) { return 1; }
-			else if(this.z < other.z) { return -1; }
-			else if(this.z > other.z) { return 1; }
-			else { return 0; }
-		}
-		return 0;
 	}
 }

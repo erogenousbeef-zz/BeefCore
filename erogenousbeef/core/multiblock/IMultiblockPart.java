@@ -5,6 +5,13 @@ import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.world.World;
 import erogenousbeef.core.common.CoordTriplet;
 
+/*
+ * Basic interface for a multiblock machine part. This should generally be 
+ * implemented on a TileEntity. Better yet, derive from MultiblockTileEntityBase,
+ * which does all the hard work for you.
+ * 
+ * @see erogenousbeef.core.multiblock.MultiblockTileEntityBase
+ */
 public interface IMultiblockPart {
 	public static final int INVALID_DISTANCE = Integer.MAX_VALUE;
 	

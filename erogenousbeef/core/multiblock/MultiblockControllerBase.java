@@ -10,11 +10,16 @@ import net.minecraft.world.World;
 
 import erogenousbeef.core.common.CoordTriplet;
 
-public class MultiblockControllerBase {
-	// Multiblock stuff
+/*
+ * This class contains the base logic for "multiblock controllers". You can think of them
+ * as meta-TileEntities. They govern the logic for an associated group of TileEntities.
+ * 
+ * Subordinate TileEntities implement the IMultiblockPart class and, generally, should not have an update() loop.
+ */
+public abstract class MultiblockControllerBase {
+	// Multiblock stuff - do not mess with
 	private World worldObj;
 	private boolean isWholeMachine;
-
 	private LinkedList<CoordTriplet> connectedBlocks;
 	private CoordTriplet saveDelegate; // Also the network communication delegate
 	
@@ -27,7 +32,7 @@ public class MultiblockControllerBase {
 	
 	private CoordTriplet cachedBlock;
 	
-	public MultiblockControllerBase(World world) {
+	protected MultiblockControllerBase(World world) {
 		// Multiblock stuff
 		worldObj = world;
 		isWholeMachine = false;
@@ -35,7 +40,6 @@ public class MultiblockControllerBase {
 		saveDelegate = null;
 		referenceCoord = null;
 		cachedBlock = null;
-
 	}
 
 	public void loadAndCacheInitialBlock(CoordTriplet initialBlock, NBTTagCompound savedData) {
@@ -43,8 +47,6 @@ public class MultiblockControllerBase {
 		cachedBlock = initialBlock;
 		MultiblockRegistry.register(this);
 	}
-	
-	public int getNumConnectedBlocks() { return connectedBlocks.size(); }
 	
 	public void attachBlock(IMultiblockPart part) {
 		IMultiblockPart candidate;
@@ -454,6 +456,7 @@ public class MultiblockControllerBase {
 	
 	public CoordTriplet getDelegateLocation() { return saveDelegate; }
 	public CoordTriplet getMinimumCoord() { return referenceCoord; }
+	public int getNumConnectedBlocks() { return connectedBlocks.size(); }
 
 	public void writeToNBT(NBTTagCompound data) {
 		// TODO Auto-generated method stub

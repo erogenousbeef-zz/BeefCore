@@ -56,4 +56,49 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 			this.colorIdx = packetData.getInteger("colorIdx");
 		}
 	}
+
+	@Override
+	public MultiblockControllerBase getNewMultiblockControllerObject() {
+		return new TestMultiblockController(this.worldObj);
+	}
+
+	///// Game logic methods. In a real game, do real stuff here.
+	
+	@Override
+	public boolean isGoodForFrame() {
+		return true;
+	}
+
+	@Override
+	public boolean isGoodForSides() {
+		return true;
+	}
+
+	@Override
+	public boolean isGoodForTop() {
+		return true;
+	}
+
+	@Override
+	public boolean isGoodForBottom() {
+		return true;
+	}
+
+	@Override
+	public boolean isGoodForInterior() {
+		return false;
+	}
+
+	@Override
+	public void onMachineAssembled(CoordTriplet machineMinCoords,
+			CoordTriplet machineMaxCoords) { }
+
+	@Override
+	public void onMachineBroken() { }
+
+	@Override
+	public void onMachineActivated() { }
+
+	@Override
+	public void onMachineDeactivated() { }
 }

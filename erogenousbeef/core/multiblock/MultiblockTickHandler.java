@@ -7,6 +7,10 @@ import net.minecraft.world.World;
 import cpw.mods.fml.common.ITickHandler;
 import cpw.mods.fml.common.TickType;
 
+/*
+ * This is a generic multiblock tick handler. If you are using this code on your own,
+ * you will need to register this with the Forge TickRegistry on the server side.
+ */
 public class MultiblockTickHandler implements ITickHandler {
 
 	@Override

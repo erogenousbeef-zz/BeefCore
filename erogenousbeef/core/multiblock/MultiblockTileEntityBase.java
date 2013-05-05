@@ -14,7 +14,11 @@ import net.minecraft.network.packet.Packet132TileEntityData;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
-public class MultiblockTileEntityBase extends TileEntity implements IMultiblockPart {
+/*
+ * Base logic class for Multiblock-connected tile entities. Most multiblock machines
+ * should derive from this and implement their game logic in certain abstract methods.
+ */
+public abstract class MultiblockTileEntityBase extends TileEntity implements IMultiblockPart {
 	private MultiblockControllerBase controller;
 	private int distance;
 	private boolean saveMultiblockData;
@@ -28,7 +32,13 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		cachedMultiblockData = null;
 	}
 
-	// Multiblock Base Code
+	///// Multiblock Connection Base Logic
+	
+	/*
+	 * Remember to call super.onBlockAdded() if you derive from this! This performs important
+	 * checks to fuse multiple controllers that are now logically conjoined by the new block.
+	 * @see erogenousbeef.core.multiblock.IMultiblockPart#onBlockAdded(net.minecraft.world.World, int, int, int)
+	 */
 	@Override
 	public void onBlockAdded(World world, int x, int y, int z) {
 		CoordTriplet[] coordsToCheck = getNeighborCoords();
@@ -105,23 +115,43 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		attachSelf(world, multiblockMaster);
 	}
 	
-	protected void attachSelf(World world, MultiblockControllerBase newController) {
-		// holy shit we're good to go
-		this.controller = newController;
-		this.controller.attachBlock(this);
-	}
+	///// Overrides from base TileEntity methods
 	
-	protected void detachSelf() {
-		if(this.controller != null) {
-			this.controller.detachBlock(this);
-			this.controller = null;
+	@Override
+	public void readFromNBT(NBTTagCompound data) {
+		super.readFromNBT(data);
+		
+		// We can't directly initialize a multiblock controller yet, so we cache the data here until
+		// we receive a validate() call, which creates the controller and hands off the cached data.
+		if(data.hasKey("multiblockData")) {
+			this.cachedMultiblockData = data.getCompoundTag("multiblockData");
 		}
 	}
-
-	// Overrides from TileEntity
+	
+	@Override
+	public void writeToNBT(NBTTagCompound data) {
+		super.writeToNBT(data);
+		
+		if(this.saveMultiblockData) {
+			NBTTagCompound multiblockData = new NBTTagCompound();
+			this.controller.writeToNBT(multiblockData);
+			data.setCompoundTag("multiblockData", multiblockData);
+		}
+	}
+		
+	/*
+	 * Generally, TileEntities that are part of a multiblock should not subscribe to updates
+	 * from the main game loop. Instead, you should have lists of TileEntities which need to
+	 * be notified during an update() in your Controller and perform callbacks from there.
+	 * @see net.minecraft.tileentity.TileEntity#canUpdate()
+	 */
 	@Override
 	public boolean canUpdate() { return false; }
 	
+	/*
+	 * Called when a block is removed.
+	 * @see net.minecraft.tileentity.TileEntity#invalidate()
+	 */
 	@Override
 	public void invalidate() {
 		super.invalidate();
@@ -129,6 +159,16 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		detachSelf();
 	}
 	
+	/*
+	 * This is called when a block is being marked as valid by the chunk, but has not yet fully
+	 * been placed into the world's TileEntity cache. this.worldObj, xCoord, yCoord and zCoord have
+	 * been initialized, but any attempts to read data about the world can cause infinite loops -
+	 * if you call getTileEntity on this TileEntity's coordinate from within validate(), you will
+	 * blow your call stack.
+	 * 
+	 * TL;DR: Here there be dragons.
+	 * @see net.minecraft.tileentity.TileEntity#validate()
+	 */
 	@Override
 	public void validate() {
 		super.validate();
@@ -136,19 +176,9 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		if(this.cachedMultiblockData != null) {
 			// We need to create a new multiblock BUT we cannot check the world yet.
 			// So we do something stupid and special.
-			MultiblockControllerBase newController = new MultiblockControllerBase(this.worldObj);
+			MultiblockControllerBase newController = getNewMultiblockControllerObject();
 			newController.loadAndCacheInitialBlock(this.getWorldLocation(), this.cachedMultiblockData);
 			this.cachedMultiblockData = null;
-		}
-	}
-	
-	protected void formatDescriptionPacket(NBTTagCompound packetData) {
-		packetData.setInteger("distance", this.distance);
-	}
-	
-	protected void decodeDescriptionPacket(NBTTagCompound packetData) {
-		if(packetData.hasKey("distance")) {
-			this.distance = packetData.getInteger("distance");
 		}
 	}
 	
@@ -165,7 +195,67 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		decodeDescriptionPacket(packet.customParam1);
 	}
 	
-	// IMultiblockPart
+	///// Things to override in most implementations (IMultiblockPart)
+
+	@Override
+	public void sendUpdatePacket() {
+		this.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+		PacketDispatcher.sendPacketToAllAround(xCoord, yCoord, zCoord, 50, worldObj.provider.dimensionId, getDescriptionPacket());
+	}
+	
+	/*
+	 * Override this to easily modify the description packet's data without having
+	 * to worry about sending the packet itself.
+	 */
+	protected void formatDescriptionPacket(NBTTagCompound packetData) {
+		packetData.setInteger("distance", this.distance);
+	}
+	
+	/*
+	 * Override this to easily read in data from a TileEntity's description packet.
+	 */
+	protected void decodeDescriptionPacket(NBTTagCompound packetData) {
+		if(packetData.hasKey("distance")) {
+			this.distance = packetData.getInteger("distance");
+		}
+	}
+
+	@Override
+	public abstract MultiblockControllerBase getNewMultiblockControllerObject();
+	
+	///// Validation Helpers (IMultiblockPart)
+	
+	@Override
+	public abstract boolean isGoodForFrame();
+
+	@Override
+	public abstract boolean isGoodForSides();
+
+	@Override
+	public abstract boolean isGoodForTop();
+
+	@Override
+	public abstract boolean isGoodForBottom();
+
+	@Override
+	public abstract boolean isGoodForInterior();
+
+	///// Game logic callbacks (IMultiblockPart)
+	
+	@Override
+	public abstract void onMachineAssembled(CoordTriplet machineMinCoords,
+			CoordTriplet machineMaxCoords);
+
+	@Override
+	public abstract void onMachineBroken();
+
+	@Override
+	public abstract void onMachineActivated();
+
+	@Override
+	public abstract void onMachineDeactivated();
+
+	///// Miscellaneous multiblock-assembly callbacks and support methods (IMultiblockPart)
 	
 	@Override
 	public boolean isConnected() {
@@ -181,49 +271,7 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 	public CoordTriplet getWorldLocation() {
 		return new CoordTriplet(this.xCoord, this.yCoord, this.zCoord);
 	}
-
-	@Override
-	public boolean isGoodForFrame() {
-		return true;
-	}
-
-	@Override
-	public boolean isGoodForSides() {
-		return true;
-	}
-
-	@Override
-	public boolean isGoodForTop() {
-		return true;
-	}
-
-	@Override
-	public boolean isGoodForBottom() {
-		return true;
-	}
-
-	@Override
-	public boolean isGoodForInterior() {
-		return false;
-	}
-
-	@Override
-	public void onMachineAssembled(CoordTriplet machineMinCoords,
-			CoordTriplet machineMaxCoords) {
-	}
-
-	@Override
-	public void onMachineBroken() {
-	}
-
-	@Override
-	public void onMachineActivated() {
-	}
-
-	@Override
-	public void onMachineDeactivated() {
-	}
-
+	
 	@Override
 	public void becomeMultiblockSaveDelegate() {
 		this.saveMultiblockData = true;
@@ -250,7 +298,7 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		this.controller = newController;
 		this.distance = IMultiblockPart.INVALID_DISTANCE;
 	}
-
+	
 	@Override
 	public void onAttached(MultiblockControllerBase newController) {
 		this.controller = newController;
@@ -284,42 +332,31 @@ public class MultiblockTileEntityBase extends TileEntity implements IMultiblockP
 		return neighborParts.toArray(tmp);
 	}
 
-	// Things to override in most implementations
-	@Override
-	public MultiblockControllerBase getNewMultiblockControllerObject() {
-		return new MultiblockControllerBase(this.worldObj);
-	}
+	///// Private/Protected Logic Helpers
 
-	@Override
-	public void sendUpdatePacket() {
-		this.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		PacketDispatcher.sendPacketToAllAround(xCoord, yCoord, zCoord, 50, worldObj.provider.dimensionId, getDescriptionPacket());
+	/*
+	 * Attaches this block to the specified controller. Assigns the controller
+	 * member and calls attachBlock on the controller.
+	 */
+	protected void attachSelf(World world, MultiblockControllerBase newController) {
+		// holy shit we're good to go
+		this.controller = newController;
+		this.controller.attachBlock(this);
 	}
 	
-	
-	// Overrides from base TileEntity methods
-	
-	@Override
-	public void readFromNBT(NBTTagCompound data) {
-		super.readFromNBT(data);
-		
-		if(data.hasKey("multiblockData")) {
-			this.cachedMultiblockData = data.getCompoundTag("multiblockData");
+	/*
+	 * Detaches this block from its controller. Calls detachBlock() and clears the controller member.
+	 */
+	protected void detachSelf() {
+		if(this.controller != null) {
+			this.controller.detachBlock(this);
+			this.controller = null;
 		}
 	}
 	
-	@Override
-	public void writeToNBT(NBTTagCompound data) {
-		super.writeToNBT(data);
-		
-		if(this.saveMultiblockData) {
-			NBTTagCompound multiblockData = new NBTTagCompound();
-			this.controller.writeToNBT(multiblockData);
-			data.setCompoundTag("multiblockData", multiblockData);
-		}
-	}
-	
-	// Private Helpers
+	/*
+	 * Get a list containing the six coordinates neighboring this one.
+	 */
 	private CoordTriplet[] getNeighborCoords() {
 		// It's important that these are in sorted order. MinX-MinY-MinZ-MaxZ-MaxY-MaxX
 		return new CoordTriplet[] {
