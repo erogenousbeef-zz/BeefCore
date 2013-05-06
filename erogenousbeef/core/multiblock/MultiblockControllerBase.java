@@ -18,16 +18,16 @@ import erogenousbeef.core.common.CoordTriplet;
  */
 public abstract class MultiblockControllerBase {
 	// Multiblock stuff - do not mess with
-	private World worldObj;
-	private boolean isWholeMachine;
-	private LinkedList<CoordTriplet> connectedBlocks;
+	protected World worldObj;
+	protected boolean isWholeMachine;
+	protected LinkedList<CoordTriplet> connectedBlocks;
 	
 	/**
 	 * The coordinate of the block through which we communicate over the network,
 	 * and to/from which controllers save/load data.
 	 * Generally, this should also be the reference coordinate.
 	 */
-	private CoordTriplet saveDelegate;
+	protected CoordTriplet saveDelegate;
 	
 	/** This is a deterministically-picked coordinate that identifies this
 	 * multiblock uniquely in its dimension.
@@ -35,7 +35,7 @@ public abstract class MultiblockControllerBase {
 	 * i.e. If something has a lower X but higher Y/Z coordinates, it will still be the reference.
 	 * If something has the same X but a lower Y coordinate, it will be the reference. Etc.
 	 */
-	private CoordTriplet referenceCoord;
+	protected CoordTriplet referenceCoord;
 
 	 /**
 	  * A cached "initial block". On the first tick recieved by this controller,
@@ -634,4 +634,16 @@ public abstract class MultiblockControllerBase {
 	 * @return The maximum bounding-box coordinate containing this machine's blocks.
 	 */
 	public CoordTriplet getMaximumCoord() { return maximumCoord.copy(); }
+
+	/**
+	 * Called when the save delegate's tile entity is being asked for its description packet
+	 * @param tag A fresh compound tag to write your multiblock data into
+	 */
+	public abstract void formatDescriptionPacket(NBTTagCompound data);
+
+	/**
+	 * Called when the save delegate's tile entity receiving a description packet
+	 * @param tag A compound tag containing multiblock data to import
+	 */
+	public abstract void decodeDescriptionPacket(NBTTagCompound data);
 }

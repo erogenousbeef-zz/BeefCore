@@ -7,6 +7,7 @@ import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import erogenousbeef.core.common.CoordTriplet;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.INetworkManager;
 import net.minecraft.network.packet.Packet;
@@ -195,6 +196,11 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 */
 	protected void formatDescriptionPacket(NBTTagCompound packetData) {
 		packetData.setInteger("distance", this.distance);
+		if(this.isMultiblockSaveDelegate()) {
+			NBTTagCompound tag = new NBTTagCompound();
+			getMultiblockController().formatDescriptionPacket(tag);
+			packetData.setCompoundTag("multiblockData", tag);
+		}
 	}
 	
 	/*
@@ -203,6 +209,16 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	protected void decodeDescriptionPacket(NBTTagCompound packetData) {
 		if(packetData.hasKey("distance")) {
 			this.distance = packetData.getInteger("distance");
+		}
+
+		if(packetData.hasKey("multiblockData")) {
+			NBTTagCompound tag = packetData.getCompoundTag("multiblockData");
+			if(isConnected()) {
+				getMultiblockController().decodeDescriptionPacket(tag);
+			}
+			else {
+				this.cachedMultiblockData = tag;
+			}
 		}
 	}
 
