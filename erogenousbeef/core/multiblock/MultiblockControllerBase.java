@@ -126,7 +126,7 @@ public abstract class MultiblockControllerBase {
 				// Not connected? Add it.
 				connectedBlocks.add(coord);
 				candidate.onAttached(this);
-				
+				this.onBlockAdded(candidate);
 				IMultiblockPart[] newParts = candidate.getNeighboringParts();
 				for(IMultiblockPart p : newParts) { partsToCheck.addLast(p); }
 			}
@@ -156,6 +156,18 @@ public abstract class MultiblockControllerBase {
 			((IMultiblockPart)te).becomeMultiblockSaveDelegate();
 		}
 	}
+
+	/**
+	 * Called when a new part is added to the machine. Good time to register things into lists.
+	 * @param newPart The part being added.
+	 */
+	protected abstract void onBlockAdded(IMultiblockPart newPart);
+
+	/**
+	 * Called when a part is removed from the machine. Good time to clean up lists.
+	 * @param oldPart The part being removed.
+	 */
+	protected abstract void onBlockRemoved(IMultiblockPart oldPart);
 	
 	/**
 	 * Call to detach a block from this machine. Generally, this should be called
@@ -168,7 +180,8 @@ public abstract class MultiblockControllerBase {
 		while(connectedBlocks.contains(coord))
 		{
 			connectedBlocks.remove(coord);
-			
+			this.onBlockRemoved(part);
+
 			if(saveDelegate.equals(coord)) {
 				part.forfeitMultiblockSaveDelegate();
 				// Shite.
