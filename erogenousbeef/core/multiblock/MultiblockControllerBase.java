@@ -457,19 +457,13 @@ public abstract class MultiblockControllerBase {
 	// and don't need to call super.
 	/**
 	 * The update loop! Implement the game logic you would like to execute
-	 * on every world tick here.
-	 * Make damned sure to call super.updateMultiblockEntity()!
+	 * on every world tick here. Note that this only executes on the server,
+	 * so you will need to send updates to the client manually.
 	 */
 	public void updateMultiblockEntity() {
 		if(cachedBlock != null) {
-			// First frame
-			TileEntity te = this.worldObj.getBlockTileEntity(cachedBlock.x, cachedBlock.y, cachedBlock.z);
-			cachedBlock = null;
-			assert(te instanceof IMultiblockPart);
-			
-			// This will spider out and reconnect to all the blocks loaded into the world
-			// on the first frame.
-			this.attachBlock((IMultiblockPart)te);
+			// First frame, probably
+			loadFromCachedBlock();
 		}
 		
 		if(this.connectedBlocks.isEmpty()) {
@@ -483,7 +477,7 @@ public abstract class MultiblockControllerBase {
 			this.blocksHaveChangedThisFrame = false;
 		}
 	}
-
+	
 	/**
 	 * Recalculates the walk distance from the reference coordinate to
 	 * all other connected blocks.
@@ -659,4 +653,16 @@ public abstract class MultiblockControllerBase {
 	 * @param tag A compound tag containing multiblock data to import
 	 */
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
+
+	protected void loadFromCachedBlock() {
+		System.out.println(String.format("Found cached block @ %d, %d, %d on %s", cachedBlock.x, cachedBlock.y, cachedBlock.z, this.worldObj.isRemote ? "client":"server"));
+		TileEntity te = this.worldObj.getBlockTileEntity(cachedBlock.x, cachedBlock.y, cachedBlock.z);
+		cachedBlock = null;
+		assert(te instanceof IMultiblockPart);
+		
+		// This will spider out and reconnect to all the blocks loaded into the world
+		// on the first frame.
+		this.attachBlock((IMultiblockPart)te);
+		System.out.println(String.format("Done rebuilding, %d blocks attached on %s", this.connectedBlocks.size(), this.worldObj.isRemote ? "client":"server"));
+	}
 }

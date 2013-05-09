@@ -217,7 +217,16 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 				getMultiblockController().decodeDescriptionPacket(tag);
 			}
 			else {
-				this.cachedMultiblockData = tag;
+				if(this.worldObj.isRemote) {
+					if(!this.isConnected()) {
+						// If a client receives a desc packet and is not yet connected, forcibly connect
+						onBlockAdded(worldObj, xCoord, yCoord, zCoord);
+					}
+					getMultiblockController().decodeDescriptionPacket(tag);
+				}
+				else {
+					this.cachedMultiblockData = tag;
+				}
 			}
 		}
 	}

@@ -46,5 +46,5 @@ public class MultiblockRegistry {
 		else {
 			// TODO: Log a warning
 		}
-	}	
+	}
 }
