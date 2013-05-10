@@ -182,13 +182,13 @@ public abstract class MultiblockControllerBase {
 			connectedBlocks.remove(coord);
 			this.onBlockRemoved(part);
 
-			if(saveDelegate.equals(coord)) {
+			if(saveDelegate != null && saveDelegate.equals(coord)) {
 				part.forfeitMultiblockSaveDelegate();
 				// Shite.
 				saveDelegate = null;
 			}
 			
-			if(referenceCoord.equals(coord)) {
+			if(referenceCoord != null && referenceCoord.equals(coord)) {
 				// SHITE!
 				referenceCoord = null;
 			}
@@ -421,30 +421,45 @@ public abstract class MultiblockControllerBase {
 		List<CoordTriplet> blocksToAcquire = (LinkedList<CoordTriplet>)other.connectedBlocks.clone();
 
 		// releases all blocks and references gently so they can be incorporated into another multiblock
-		other.onConsumedByOtherController();
+		other.onMergedIntoOtherController(this);
 		
+		IMultiblockPart acquiredPart;
 		for(CoordTriplet coord : blocksToAcquire) {
 			// By definition, none of these can be the minimum block.
 			this.connectedBlocks.add(coord);
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
-			((IMultiblockPart)te).onMergedIntoOtherMultiblock(this);
+			acquiredPart = (IMultiblockPart)te;
+			acquiredPart.onMergedIntoOtherMultiblock(this);
+			this.onBlockAdded(acquiredPart);
 		}
 	}
 	
 	/**
 	 * Called when this machine is consumed by another controller.
 	 * Essentially, forcibly tear down this object.
+	 * @param otherController The controller consuming this controller.
 	 */
-	private void onConsumedByOtherController() {
+	private void onMergedIntoOtherController(MultiblockControllerBase otherController) {
 		this.disassembleMachine();
+		
 		this.referenceCoord = null;
 		TileEntity te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);
 		((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
 		this.saveDelegate = null;
 		this.connectedBlocks.clear();
 		MultiblockRegistry.unregister(this);
+		
+		this.onMachineMerge(otherController);
 	}
-
+	
+	/**
+	 * Callback. Called after this machine is consumed by another controller.
+	 * This means all blocks have been stripped out of this object and
+	 * handed over to the other controller.
+	 * @param otherMachine The machine consuming this controller.
+	 */
+	protected abstract void onMachineMerge(MultiblockControllerBase otherMachine);
+	
 	/**
 	 * Called after all multiblock machine merges have been completed for
 	 * this machine.
