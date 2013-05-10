@@ -229,6 +229,12 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 				}
 			}
 		}
+		
+		// Ensure that client blocks are always connected,
+		// since the server doesn't do an "onBlockAdded" callback.
+		if(!this.isConnected() && this.worldObj.isRemote) {
+			onBlockAdded(worldObj, xCoord, yCoord, zCoord);
+		}
 	}
 
 	@Override
