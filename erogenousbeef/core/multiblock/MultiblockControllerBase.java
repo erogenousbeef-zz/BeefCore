@@ -519,34 +519,28 @@ public abstract class MultiblockControllerBase {
 		IMultiblockPart[] nearbyParts = part.getNeighboringParts();
 		for(IMultiblockPart nearbyPart : nearbyParts) {
 			assert(nearbyPart.getMultiblockController() == this);
-			if(nearbyPart.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE) {
-				partsToCheck.add(nearbyPart);
-			}
+			assert(part.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE);
+			nearbyPart.setDistance(1);
+			partsToCheck.add(nearbyPart);
 		}
 		
 		// Do a breadth-first search of neighboring parts.
 		// Any parts not yet calculated will be added to the queue.
-		int minimumNearbyDistance;
 		while(!partsToCheck.isEmpty()) {
 			part = partsToCheck.removeFirst();
 			assert(part.getMultiblockController() == this);
-			assert(part.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE);
 			
-			minimumNearbyDistance = IMultiblockPart.INVALID_DISTANCE;
-			
+			int myDistance = part.getDistanceFromReferenceCoord();
 			nearbyParts = part.getNeighboringParts();
 			for(IMultiblockPart nearbyPart : nearbyParts) {
 				assert(nearbyPart.getMultiblockController() == this);
-				minimumNearbyDistance = Math.min(minimumNearbyDistance, nearbyPart.getDistanceFromReferenceCoord());
-				
-				if(nearbyPart.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE) {
+				if(nearbyPart.getDistanceFromReferenceCoord() > myDistance+1) {
+					nearbyPart.setDistance(myDistance + 1);
 					partsToCheck.add(nearbyPart);
 				}
 			}
-			
-			part.setDistance(minimumNearbyDistance+1);
 		}
-		
+
 		for(CoordTriplet coord : connectedBlocks) {
 			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
 			part.sendUpdatePacket();
