@@ -664,7 +664,6 @@ public abstract class MultiblockControllerBase {
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
 
 	protected void loadFromCachedBlock() {
-		System.out.println(String.format("Found cached block @ %d, %d, %d on %s", cachedBlock.x, cachedBlock.y, cachedBlock.z, this.worldObj.isRemote ? "client":"server"));
 		TileEntity te = this.worldObj.getBlockTileEntity(cachedBlock.x, cachedBlock.y, cachedBlock.z);
 		cachedBlock = null;
 		assert(te instanceof IMultiblockPart);
@@ -672,6 +671,5 @@ public abstract class MultiblockControllerBase {
 		// This will spider out and reconnect to all the blocks loaded into the world
 		// on the first frame.
 		this.attachBlock((IMultiblockPart)te);
-		System.out.println(String.format("Done rebuilding, %d blocks attached on %s", this.connectedBlocks.size(), this.worldObj.isRemote ? "client":"server"));
 	}
 }
