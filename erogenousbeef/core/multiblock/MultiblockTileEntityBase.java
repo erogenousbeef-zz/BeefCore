@@ -187,7 +187,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void sendUpdatePacket() {
 		this.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-		PacketDispatcher.sendPacketToAllAround(xCoord, yCoord, zCoord, 50, worldObj.provider.dimensionId, getDescriptionPacket());
 	}
 	
 	/*
