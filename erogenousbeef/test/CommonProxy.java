@@ -2,7 +2,7 @@ package erogenousbeef.test;
 
 import cpw.mods.fml.common.registry.TickRegistry;
 import cpw.mods.fml.relauncher.Side;
-import erogenousbeef.core.multiblock.MultiblockTickHandler;
+import erogenousbeef.core.multiblock.MultiblockServerTickHandler;
 
 public class CommonProxy {
 
@@ -12,7 +12,7 @@ public class CommonProxy {
 	
 	public void init() {
 		TestMod.registerTileEntities();
-		TickRegistry.registerTickHandler(new MultiblockTickHandler(), Side.SERVER);
+		TickRegistry.registerTickHandler(new MultiblockServerTickHandler(), Side.SERVER);
 	}
 	
 }

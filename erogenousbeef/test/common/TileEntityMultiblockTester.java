@@ -90,8 +90,7 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 	}
 
 	@Override
-	public void onMachineAssembled(CoordTriplet machineMinCoords,
-			CoordTriplet machineMaxCoords) { }
+	public void onMachineAssembled() { }
 
 	@Override
 	public void onMachineBroken() { }
