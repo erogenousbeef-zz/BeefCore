@@ -15,6 +15,7 @@ import erogenousbeef.core.multiblock.IMultiblockPart;
 import erogenousbeef.test.TestMod;
 import erogenousbeef.test.common.BlockMultiblockTester;
 import erogenousbeef.test.common.TileEntityMultiblockTester;
+import erogenousbeef.test.common.TestMultiblockController;
 
 public class RendererMultiblockTester extends TileEntitySpecialRenderer {
 
@@ -29,15 +30,19 @@ public class RendererMultiblockTester extends TileEntitySpecialRenderer {
 		
         FontRenderer fontrenderer = this.getFontRenderer();
         int color = 0;
-        int distance = -1;
+        int identifier = -1;
         int numConnected = -1;
         if(tileentity instanceof TileEntityMultiblockTester) {
         	TileEntityMultiblockTester mbt = (TileEntityMultiblockTester)tileentity;
         	color = mbt.getColor();
         	if(mbt.getMultiblockController() != null) {
-            	numConnected = mbt.getMultiblockController().getNumConnectedBlocks();        		
+            	numConnected = mbt.getMultiblockController().getNumConnectedBlocks();
+            	identifier = ((TestMultiblockController)mbt.getMultiblockController()).ordinal;
         	}
-        	distance = mbt.getDistanceFromReferenceCoord();
+        	else {
+        		numConnected = -1;
+        		identifier = -1;
+        	}
         }
 
         GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
@@ -65,11 +70,11 @@ public class RendererMultiblockTester extends TileEntitySpecialRenderer {
             GL11.glTranslatef(-0.1F, -0.2F, 0.0f);
             GL11.glScalef(f2*0.5f, -f2*0.5f, f2*0.5f);
             GL11.glNormal3f(0.0F, 0.0F, -1.0F * f2);
-            if(distance == IMultiblockPart.INVALID_DISTANCE) {
+            if(identifier == IMultiblockPart.INVALID_DISTANCE) {
                 fontrenderer.drawString("XX", 0, 0, color);
             }
             else {
-                fontrenderer.drawString(Integer.toString(distance), 0, 0, color);
+                fontrenderer.drawString(Integer.toString(identifier), 0, 0, color);
             }
 
         	GL11.glPopMatrix();

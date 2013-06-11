@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import net.minecraft.block.material.Material;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
@@ -19,15 +20,12 @@ import erogenousbeef.core.common.CoordTriplet;
 public abstract class MultiblockControllerBase {
 	// Multiblock stuff - do not mess with
 	protected World worldObj;
-	protected boolean isWholeMachine;
-	protected LinkedList<CoordTriplet> connectedBlocks;
 	
-	/**
-	 * The coordinate of the block through which we communicate over the network,
-	 * and to/from which controllers save/load data.
-	 * Generally, this should also be the reference coordinate.
-	 */
-	protected CoordTriplet saveDelegate;
+	// Disassembled -> Assembled; Assembled -> Disassembled OR Paused; Paused -> Assembled
+	protected enum AssemblyState { Disassembled, Assembled, Paused };
+	protected AssemblyState assemblyState;
+
+	protected LinkedList<CoordTriplet> connectedBlocks;
 	
 	/** This is a deterministically-picked coordinate that identifies this
 	 * multiblock uniquely in its dimension.
@@ -36,15 +34,6 @@ public abstract class MultiblockControllerBase {
 	 * If something has the same X but a lower Y coordinate, it will be the reference. Etc.
 	 */
 	protected CoordTriplet referenceCoord;
-
-	 /**
-	  * A cached "initial block". On the first tick recieved by this controller,
-	  * if this is non-null, this coordinate will be checked for an IMachinePart tile entity.
-	  * If one exists, it will be added to this controller.
-	  * This is a trick to allow machines to create themselves during world loading without
-	  * all the blocks having to load their states at once.
-	  */
-	private CoordTriplet cachedBlock;
 
 	/**
 	 * Minimum bounding box coordinate. Blocks do not necessarily exist at this coord if your machine
@@ -65,29 +54,34 @@ public abstract class MultiblockControllerBase {
 	 */
 	private boolean blocksHaveChangedThisFrame;
 	
+	/**
+	 * Set to true when all blocks unloading this frame are unloading due to
+	 * chunk unloading.
+	 */
+	private boolean chunksHaveUnloaded;
+	
 	protected MultiblockControllerBase(World world) {
 		// Multiblock stuff
 		worldObj = world;
-		isWholeMachine = false;
 		connectedBlocks = new LinkedList<CoordTriplet>();
-		saveDelegate = null;
 		referenceCoord = null;
-		cachedBlock = null;
-		
+		assemblyState = AssemblyState.Disassembled;
+
 		minimumCoord = new CoordTriplet(0,0,0);
 		maximumCoord = new CoordTriplet(0,0,0);
 		
 		blocksHaveChangedThisFrame = false;
+		chunksHaveUnloaded = false;
 	}
 
 	/**
-	 * Call when the save delegate block loads.
-	 * @param initialBlock The coordinate of the block which is loading data into this controller.
+	 * Call when the save delegate block finishes loading its chunk.
+	 * Immediately call attachBlock after this, or risk your multiblock
+	 * being destroyed!
 	 * @param savedData The NBT tag containing this controller's data.
 	 */
-	public void loadAndCacheInitialBlock(CoordTriplet initialBlock, NBTTagCompound savedData) {
+	public void restore(NBTTagCompound savedData) {
 		this.readFromNBT(savedData);
-		cachedBlock = initialBlock;
 		MultiblockRegistry.register(this);
 	}
 	
@@ -107,54 +101,36 @@ public abstract class MultiblockControllerBase {
 	 */
 	public void attachBlock(IMultiblockPart part) {
 		IMultiblockPart candidate;
-		CoordTriplet coord;
+		CoordTriplet coord = part.getWorldLocation();
 		boolean firstBlock = this.connectedBlocks.isEmpty();
 
-		// Spider out into the world, consuming all unconnected blocks we touch.
-		LinkedList<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
-		partsToCheck.add(part);
-		while(!partsToCheck.isEmpty()) {
-			candidate = partsToCheck.removeFirst();
-			coord = candidate.getWorldLocation();
-			
-			// Already got it? Ignore.
-			if(connectedBlocks.contains(coord)) {
-				continue;
-			}
-			
-			if(!candidate.isConnected()) {
-				// Not connected? Add it.
-				connectedBlocks.add(coord);
-				candidate.onAttached(this);
-				this.onBlockAdded(candidate);
-				IMultiblockPart[] newParts = candidate.getNeighboringParts();
-				for(IMultiblockPart p : newParts) { partsToCheck.addLast(p); }
-			}
-			// Fusion is handled in block placement.
+		// No need to re-add a block
+		if(connectedBlocks.contains(coord)) {
+			return;
 		}
 
+		connectedBlocks.add(coord);
+		part.onAttached(this);
+		this.onBlockAdded(part);
+		this.worldObj.markBlockForUpdate(coord.x, coord.y, coord.z);
+		
 		if(firstBlock) {
 			MultiblockRegistry.register(this);
 		}
 
-		blocksHaveChangedThisFrame = true;
-		this.recalculateDistances();
-		this.recalculateMinMaxCoords();
-		
-		if(this.saveDelegate == null) {
-			saveDelegate = referenceCoord;
-			TileEntity te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);
-			((IMultiblockPart)te).becomeMultiblockSaveDelegate();
+		if(this.referenceCoord == null) {
+			referenceCoord = coord;
+			part.becomeMultiblockSaveDelegate();
 		}
-		else if(this.referenceCoord.compareTo(this.saveDelegate) < 0) {
-			// Swap save delegate to new minimum coord.
-			TileEntity te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);
+		else if(coord.compareTo(referenceCoord) < 0) {
+			TileEntity te = this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
 			((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
-
-			saveDelegate = referenceCoord;
-			te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);			
-			((IMultiblockPart)te).becomeMultiblockSaveDelegate();
+			
+			referenceCoord = coord;
+			part.becomeMultiblockSaveDelegate();
 		}
+		
+		blocksHaveChangedThisFrame = true;
 	}
 
 	/**
@@ -170,87 +146,107 @@ public abstract class MultiblockControllerBase {
 	protected abstract void onBlockRemoved(IMultiblockPart oldPart);
 	
 	/**
+	 * Called when a machine is assembled from a disassembled state.
+	 */
+	protected abstract void onMachineAssembled();
+	
+	/**
+	 * Called when a machine is restored to the assembled state from a paused state.
+	 */
+	protected abstract void onMachineRestored();
+
+	/**
+	 * Called when a machine is paused from an assembled state
+	 * This generally only happens due to chunk-loads and other "system" events.
+	 */
+	protected abstract void onMachinePaused();
+	
+	/**
+	 * Called when a machine is disassembled from an assembled state.
+	 * This happens due to user or in-game actions (e.g. explosions)
+	 */
+	protected abstract void onMachineDisassembled();
+	
+	/**
 	 * Call to detach a block from this machine. Generally, this should be called
 	 * when the tile entity is being released, e.g. on block destruction.
 	 * @param part The part to detach from this machine.
+	 * @param chunkUnloading Is this entity detaching due to the chunk unloading? If true, the multiblock will be paused instead of broken.
 	 */
-	public void detachBlock(IMultiblockPart part) {
+	public void detachBlock(IMultiblockPart part, boolean chunkUnloading) {
+		_detachBlock(part, chunkUnloading);
+		
+		// If we've lost blocks while disassembled, split up our machine. Can result in up to 6 new TEs.
+		if(!chunkUnloading && this.assemblyState == AssemblyState.Disassembled) {
+			this.revisitBlocks();
+		}
+	}
+
+	/**
+	 * Internal helper that can be safely called for internal use
+	 * Does not trigger fission.
+	 * @param part The part to detach from this machine.
+	 * @param chunkUnloading Is this entity detaching due to the chunk unloading? If true, the multiblock will be paused instead of broken.
+	 */
+	private void _detachBlock(IMultiblockPart part, boolean chunkUnloading) {
 		CoordTriplet coord = part.getWorldLocation();
+		if(chunkUnloading) {
+			if(this.assemblyState == AssemblyState.Assembled) {
+				this.assemblyState = AssemblyState.Paused;
+				this.onMachinePaused();
+			}
+		}
+
+		if(connectedBlocks.contains(coord)) {
+			part.onDetached(this);
+		}
 		
 		while(connectedBlocks.contains(coord))
 		{
 			connectedBlocks.remove(coord);
 			this.onBlockRemoved(part);
 
-			if(saveDelegate != null && saveDelegate.equals(coord)) {
-				part.forfeitMultiblockSaveDelegate();
-				// Shite.
-				saveDelegate = null;
-			}
-			
 			if(referenceCoord != null && referenceCoord.equals(coord)) {
-				// SHITE!
+				part.forfeitMultiblockSaveDelegate();
 				referenceCoord = null;
 			}
 		}
 
-		boolean wasDetachedAlready = part.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE;
-		
-		part.onDetached(this);
-		
 		if(connectedBlocks.isEmpty()) {
 			// Destroy/unregister
 			MultiblockRegistry.unregister(this);
 			return;
 		}
 
+		if(!blocksHaveChangedThisFrame && chunkUnloading) {
+			// If the first change this frame is a chunk unload, set to true.
+			this.chunksHaveUnloaded = true;
+		}
+		else if(this.chunksHaveUnloaded) {
+			// If we get multiple unloads in a frame, any one of them being false flips this false too.
+			this.chunksHaveUnloaded = chunkUnloading;
+		}
+
 		blocksHaveChangedThisFrame = true;
 		this.recalculateMinMaxCoords();
-		
-		// Was this block already known disconnected?
-		if(wasDetachedAlready) {
-			// Yup, but it was already known disconnected.
-			return;
-		}
-		
-		// Recalculate all distances from the minimum coord.
-		this.recalculateDistances();
-		
-		// Perform fission. Can result in up to 6 new TEs.
-		doFission();
-		
-		// Find new save delegate if we need to.
-		if(saveDelegate == null) {
-			saveDelegate = referenceCoord;
-			TileEntity te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);
-			((IMultiblockPart)te).becomeMultiblockSaveDelegate();
-		}
-	}
 
-	/**
-	 * Helper function. Check for orphans and create new machines until there are no more orphaned blocks.
-	 */
-	private void doFission() {
-		// First, remove any blocks that are still disconnected.
-		IMultiblockPart part;
-		List<IMultiblockPart> orphans = new LinkedList<IMultiblockPart>();
-		for(CoordTriplet c : connectedBlocks) {
-			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
-			if(part.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE) {
-				orphans.add(part);
+		// Find new save delegate if we need to.
+		if(referenceCoord == null) {
+			// ConnectedBlocks can be empty due to chunk unloading. This is OK. We'll die next frame.
+			if(!this.connectedBlocks.isEmpty()) {
+				for(CoordTriplet connectedCoord : connectedBlocks) {
+					if(referenceCoord == null) {
+						referenceCoord = connectedCoord;
+					}
+					else if(connectedCoord.compareTo(referenceCoord) < 0) {
+						referenceCoord = connectedCoord;
+					}
+				}
 			}
-		}
-		
-		// Remove all orphaned parts. i.e. Actually orphan them.
-		for(IMultiblockPart orphan : orphans) {
-			this.detachBlock(orphan);
-		}
-		
-		// Now go through and start up as many new machines as possible.
-		for(IMultiblockPart orphan : orphans) {
-			if(!orphan.isConnected()) {
-				// Creating a new multiblock should capture all other orphans connected to this orphan.
-				orphan.createNewMultiblock();
+
+			if(referenceCoord != null) {
+				TileEntity te = this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+				((IMultiblockPart)te).becomeMultiblockSaveDelegate();
 			}
 		}
 	}
@@ -263,7 +259,6 @@ public abstract class MultiblockControllerBase {
 	 */
 	protected abstract int getMinimumNumberOfBlocksForAssembledMachine();
 
-	// TODO: Move this implementation up to the game logic level.
 	/**
 	 * @return True if the machine is "whole" and should be assembled. False otherwise.
 	 */
@@ -355,15 +350,20 @@ public abstract class MultiblockControllerBase {
 	 * If the machine was whole, but no longer is, disassemble the machine.
 	 */
 	protected void checkIfMachineIsWhole() {
-		boolean wasWholeMachine = this.isWholeMachine;
-		this.isWholeMachine = isMachineWhole();
+		AssemblyState oldState = this.assemblyState;
+		boolean isWhole = isMachineWhole();
 		
-		if(!wasWholeMachine && isWholeMachine) {
-			assembleMachine();
+		if(isWhole) {
+			// This will alter assembly state
+			this.assemblyState = AssemblyState.Assembled;
+			assembleMachine(oldState);
 		}
-		else if(wasWholeMachine && !isWholeMachine) {
+		else if(oldState == AssemblyState.Assembled) {
+			// This will alter assembly state
+			this.assemblyState = AssemblyState.Disassembled;
 			disassembleMachine();
 		}
+		// Else Paused, do nothing
 	}
 	
 	/**
@@ -371,7 +371,7 @@ public abstract class MultiblockControllerBase {
 	 * functioning as a game-logically finished machine.
 	 * Calls onMachineAssembled on all attached parts.
 	 */
-	protected void assembleMachine() {
+	private void assembleMachine(AssemblyState oldState) {
 		TileEntity te;
 		for(CoordTriplet coord : connectedBlocks) {
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
@@ -379,15 +379,22 @@ public abstract class MultiblockControllerBase {
 				((IMultiblockPart)te).onMachineAssembled();
 			}
 		}
+		
+		if(oldState == assemblyState.Paused) {
+			onMachineRestored();
+		}
+		else {
+			onMachineAssembled();
+		}
 	}
 	
 	/**
 	 * Called when the machine needs to be disassembled.
 	 * It is not longer "whole" and should not be functional, usually
 	 * as a result of a block being removed.
-	 * Called onMachineBroken on all attached parts.
+	 * Calls onMachineBroken on all attached parts.
 	 */
-	protected void disassembleMachine() {
+	private void disassembleMachine() {
 		TileEntity te;
 		for(CoordTriplet coord : connectedBlocks) {
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
@@ -395,6 +402,26 @@ public abstract class MultiblockControllerBase {
 				((IMultiblockPart)te).onMachineBroken();
 			}
 		}
+		
+		onMachineDisassembled();
+	}
+	
+	/**
+	 * Called when the machine is paused, generally due to chunk unloads or merges.
+	 * This should perform any machine-halt cleanup logic, but not change any user
+	 * settings.
+	 * Calls onMachineBroken on all attached parts.
+	 */
+	private void pauseMachine() {
+		TileEntity te;
+		for(CoordTriplet coord : connectedBlocks) {
+			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
+			if(te instanceof IMultiblockPart) {
+				((IMultiblockPart)te).onMachineBroken();
+			}
+		}
+		
+		onMachinePaused();
 	}
 
 	/**
@@ -440,12 +467,14 @@ public abstract class MultiblockControllerBase {
 	 * @param otherController The controller consuming this controller.
 	 */
 	private void onMergedIntoOtherController(MultiblockControllerBase otherController) {
-		this.disassembleMachine();
+		this.pauseMachine();
 		
-		this.referenceCoord = null;
-		TileEntity te = this.worldObj.getBlockTileEntity(saveDelegate.x, saveDelegate.y, saveDelegate.z);
-		((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
-		this.saveDelegate = null;
+		if(referenceCoord != null) {
+			TileEntity te = this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+			((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
+			this.referenceCoord = null;
+		}
+
 		this.connectedBlocks.clear();
 		MultiblockRegistry.unregister(this);
 		
@@ -465,22 +494,15 @@ public abstract class MultiblockControllerBase {
 	 * this machine.
 	 */
 	public void endMerging() {
-		this.recalculateDistances();
+		this.recalculateMinMaxCoords();
 	}
 	
-	// TODO: Change this so that people can safely override a business-logic callback
-	// and don't need to call super.
 	/**
 	 * The update loop! Implement the game logic you would like to execute
 	 * on every world tick here. Note that this only executes on the server,
 	 * so you will need to send updates to the client manually.
 	 */
-	public void updateMultiblockEntity() {
-		if(cachedBlock != null) {
-			// First frame, probably
-			loadFromCachedBlock();
-		}
-		
+	public final void updateMultiblockEntity() {
 		if(this.connectedBlocks.isEmpty()) {
 			MultiblockRegistry.unregister(this);
 			return;
@@ -491,18 +513,39 @@ public abstract class MultiblockControllerBase {
 			checkIfMachineIsWhole();
 			this.blocksHaveChangedThisFrame = false;
 		}
+		
+		if(this.assemblyState != AssemblyState.Paused) {
+			update();
+		}
 	}
 	
 	/**
-	 * Recalculates the walk distance from the reference coordinate to
-	 * all other connected blocks.
+	 * The update loop! Use this similarly to a TileEntity's update loop.
+	 * You do not need to call your superclass' update() if you're directly
+	 * derived from MultiblockControllerBase. This is a callback.
+	 * Note that this will not be called if the machine is paused.
 	 */
-	protected void recalculateDistances() {
+	protected abstract void update();
+	
+	/**
+	 * Visits all blocks via a breadth-first walk of neighbors from the
+	 * reference coordinate. If any blocks remain unvisited after this
+	 * method is called, they are orphans and are split off the main
+	 * machine.
+	 */
+	private void revisitBlocks() {
 		TileEntity te;
-		// Reset all distances and find the minimum coordinate
+		// Ensure that our current reference coord is valid. If not, invalidate it.
+		if(referenceCoord != null && this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z) == null) {
+			referenceCoord = null;
+		}
+		
+		// Reset visitations and find the minimum coordinate
 		for(CoordTriplet c: connectedBlocks) {
 			te = this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
-			((IMultiblockPart)te).setDistance(IMultiblockPart.INVALID_DISTANCE);
+			if(te == null) { continue; } // This happens during chunk unload. Consider it valid, move on.
+
+			((IMultiblockPart)te).setUnvisited();
 			
 			if(referenceCoord == null) {
 				referenceCoord = c;
@@ -512,38 +555,55 @@ public abstract class MultiblockControllerBase {
 			}
 		}
 		
-		IMultiblockPart part = (IMultiblockPart)this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
-		part.setDistance(0);
-
-		LinkedList<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
-		IMultiblockPart[] nearbyParts = part.getNeighboringParts();
-		for(IMultiblockPart nearbyPart : nearbyParts) {
-			assert(nearbyPart.getMultiblockController() == this);
-			assert(part.getDistanceFromReferenceCoord() == IMultiblockPart.INVALID_DISTANCE);
-			nearbyPart.setDistance(1);
-			partsToCheck.add(nearbyPart);
+		if(referenceCoord == null) {
+			// There are no valid parts remaining. This is due to a chunk unload. Halt.
+			return;
 		}
-		
-		// Do a breadth-first search of neighboring parts.
-		// Any parts not yet calculated will be added to the queue.
+
+		// Now visit all connected parts, breadth-first, starting from reference coord.
+		LinkedList<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
+		IMultiblockPart[] nearbyParts = null;
+		IMultiblockPart part = (IMultiblockPart)this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+
+		partsToCheck.add(part);
 		while(!partsToCheck.isEmpty()) {
 			part = partsToCheck.removeFirst();
-			assert(part.getMultiblockController() == this);
-			
-			int myDistance = part.getDistanceFromReferenceCoord();
+			part.setVisited();
+
 			nearbyParts = part.getNeighboringParts();
 			for(IMultiblockPart nearbyPart : nearbyParts) {
-				assert(nearbyPart.getMultiblockController() == this);
-				if(nearbyPart.getDistanceFromReferenceCoord() > myDistance+1) {
-					nearbyPart.setDistance(myDistance + 1);
+				// Ignore different machines
+				if(nearbyPart.getMultiblockController() != this) {
+					continue;
+				}
+
+				if(!nearbyPart.isVisited()) {
+					nearbyPart.setVisited();
 					partsToCheck.add(nearbyPart);
 				}
 			}
 		}
-
-		for(CoordTriplet coord : connectedBlocks) {
-			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
-			part.sendUpdatePacket();
+		
+		// First, remove any blocks that are still disconnected.
+		List<IMultiblockPart> orphans = new LinkedList<IMultiblockPart>();
+		for(CoordTriplet c : connectedBlocks) {
+			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
+			if(!part.isVisited()) {
+				orphans.add(part);
+			}
+		}
+		
+		// Remove all orphaned parts. i.e. Actually orphan them.
+		for(IMultiblockPart orphan : orphans) {
+			this._detachBlock(orphan, false);
+		}
+		
+		// Now go through and start up as many new machines as possible.
+		for(IMultiblockPart orphan : orphans) {
+			if(!orphan.isConnected()) {
+				// Creating a new multiblock should capture all other orphans connected to this orphan.
+				orphan.onOrphaned();
+			}
 		}
 	}
 	
@@ -610,11 +670,6 @@ public abstract class MultiblockControllerBase {
 	}
 	
 	/**
-	 * @return The coordinate of the save-delegate block.
-	 */
-	public CoordTriplet getDelegateLocation() { return saveDelegate; }
-	
-	/**
 	 * @return The reference coordinate, the block with the lowest x, y, z coordinates, evaluated in that order.
 	 */
 	public CoordTriplet getReferenceCoord() { return referenceCoord; }
@@ -662,14 +717,4 @@ public abstract class MultiblockControllerBase {
 	 * @param tag A compound tag containing multiblock data to import
 	 */
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
-
-	protected void loadFromCachedBlock() {
-		TileEntity te = this.worldObj.getBlockTileEntity(cachedBlock.x, cachedBlock.y, cachedBlock.z);
-		cachedBlock = null;
-		assert(te instanceof IMultiblockPart);
-		
-		// This will spider out and reconnect to all the blocks loaded into the world
-		// on the first frame.
-		this.attachBlock((IMultiblockPart)te);
-	}
 }

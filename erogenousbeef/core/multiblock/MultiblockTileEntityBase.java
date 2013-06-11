@@ -2,6 +2,7 @@ package erogenousbeef.core.multiblock;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.Side;
@@ -13,7 +14,9 @@ import net.minecraft.network.INetworkManager;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.Packet132TileEntityData;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
+import net.minecraftforge.common.MinecraftForge;
 
 /**
  * Base logic class for Multiblock-connected tile entities. Most multiblock machines
@@ -21,15 +24,21 @@ import net.minecraft.world.World;
  */
 public abstract class MultiblockTileEntityBase extends TileEntity implements IMultiblockPart {
 	private MultiblockControllerBase controller;
-	private int distance;
+	private byte visited;
+	private static final byte kUnvisited = 0;
+	private static final byte kVisited = 1;
+	
+	
 	private boolean saveMultiblockData;
 	private NBTTagCompound cachedMultiblockData;
+	private boolean paused;
 
 	public MultiblockTileEntityBase() {
 		super();
 		controller = null;
-		distance = IMultiblockPart.INVALID_DISTANCE;
+		visited = kUnvisited;
 		saveMultiblockData = false;
+		paused = false;
 		cachedMultiblockData = null;
 	}
 
@@ -56,7 +65,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		for(CoordTriplet coord : coordsToCheck) {
 			remoteTE = world.getBlockTileEntity(coord.x, coord.y, coord.z);
 			
-			if(remoteTE != null && remoteTE instanceof IMultiblockPart) {
+			if(remoteTE instanceof IMultiblockPart) {
 				remotePart = (IMultiblockPart)remoteTE;
 				if(remotePart.isConnected()) {
 					if(!controllers.contains(remotePart.getMultiblockController())) {
@@ -68,12 +77,11 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 					}
 					else {
 						// We've already encountered this one, so first check if it's the same machine.
-						if(remotePart.getMultiblockController() == connectionTarget.getMultiblockController()) {
-							// It is, so we need to see if this is a closer connection.
-							if(remotePart.isConnected() && (connectionTarget == null || connectionTarget.getDistanceFromReferenceCoord() > remotePart.getDistanceFromReferenceCoord()))
-							{
-								connectionTarget = remotePart;
-							}
+						if(remotePart.getMultiblockController() != connectionTarget.getMultiblockController()) {
+							// Okay, we need to see if this is a "better" connection candidate;
+							// That is, it's also a compatible machine AND this part's controller
+							// has a refcoord smaller than the existing target.
+							// TODO: This.
 						}
 						// Else, it's a machine that we've already decided not to connect to.
 						// IT WILL BECOME PART OF US LATER.
@@ -143,7 +151,33 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void invalidate() {
 		super.invalidate();
 		
-		detachSelf();
+		detachSelf(false);
+	}
+	
+	@Override
+	public void onChunkUnload() {
+		super.onChunkUnload();
+		detachSelf(true);
+	}
+
+	// This is actually called from a special hacked chunk-load event detector, because
+	// minecraft won't tell us this directly. :(
+	@Override
+	public void onChunkLoad() {
+		if(this.cachedMultiblockData != null) {
+			// We need to create a new multiblock BUT we cannot check the world yet.
+			// So we do something stupid and special.
+			MultiblockControllerBase newController = getNewMultiblockControllerObject();
+			newController.restore(this.cachedMultiblockData);
+			this.cachedMultiblockData = null;
+			newController.attachBlock(this); // This should grab any other connected blocks in the chunk
+		}
+		else {
+			if(!this.isConnected()) {
+				// Ignore blocks that are already connected
+				this.onBlockAdded(this.worldObj, xCoord, yCoord, zCoord);
+			}
+		}
 	}
 	
 	/*
@@ -160,12 +194,9 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void validate() {
 		super.validate();
 		
-		if(this.cachedMultiblockData != null) {
-			// We need to create a new multiblock BUT we cannot check the world yet.
-			// So we do something stupid and special.
-			MultiblockControllerBase newController = getNewMultiblockControllerObject();
-			newController.loadAndCacheInitialBlock(this.getWorldLocation(), this.cachedMultiblockData);
-			this.cachedMultiblockData = null;
+		if(!this.worldObj.getChunkProvider().chunkExists(xCoord >> 4, zCoord >> 4)) {
+			boolean priority = this.cachedMultiblockData != null;
+			MultiblockRegistry.onPartLoaded(ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this, priority);
 		}
 	}
 	
@@ -194,7 +225,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 * to worry about sending the packet itself.
 	 */
 	protected void formatDescriptionPacket(NBTTagCompound packetData) {
-		packetData.setInteger("distance", this.distance);
+		packetData.setByte("visited", this.visited);
 		if(this.isMultiblockSaveDelegate()) {
 			NBTTagCompound tag = new NBTTagCompound();
 			getMultiblockController().formatDescriptionPacket(tag);
@@ -206,8 +237,11 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 * Override this to easily read in data from a TileEntity's description packet.
 	 */
 	protected void decodeDescriptionPacket(NBTTagCompound packetData) {
-		if(packetData.hasKey("distance")) {
-			this.distance = packetData.getInteger("distance");
+		if(packetData.hasKey("visited")) {
+			this.visited = packetData.getByte("visited");
+		}
+		else {
+			this.setUnvisited();
 		}
 
 		if(packetData.hasKey("multiblockData")) {
@@ -231,6 +265,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		
 		// Ensure that client blocks are always connected,
 		// since the server doesn't do an "onBlockAdded" callback.
+		// TODO: Try removing this.
 		if(!this.isConnected() && this.worldObj.isRemote) {
 			onBlockAdded(worldObj, xCoord, yCoord, zCoord);
 		}
@@ -301,32 +336,39 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public boolean isMultiblockSaveDelegate() { return this.saveMultiblockData; }
 
 	@Override
-	public int getDistanceFromReferenceCoord() {
-		return distance;
+	public void setUnvisited() {
+		this.visited = kUnvisited;
 	}
 	
 	@Override
-	public void setDistance(int newDistance) {
-		this.distance = newDistance;
+	public void setVisited() {
+		this.visited = kVisited;
+	}
+	
+	@Override
+	public boolean isVisited() {
+		return this.visited != kUnvisited;
 	}
 
 	@Override
 	public void onMergedIntoOtherMultiblock(MultiblockControllerBase newController) {
 		assert(this.controller != newController);
 		this.controller = newController;
-		this.distance = IMultiblockPart.INVALID_DISTANCE;
 	}
 	
 	@Override
 	public void onAttached(MultiblockControllerBase newController) {
 		this.controller = newController;
+		CoordTriplet ref = controller.getReferenceCoord();
 	}
 	
 	@Override
 	public void onDetached(MultiblockControllerBase oldController) {
-		assert(this.controller == oldController);
+		if(this.controller != oldController) {
+			throw new IllegalArgumentException("Detaching from wrong controller");
+		}
+
 		this.controller = null;
-		this.distance = IMultiblockPart.INVALID_DISTANCE;
 	}
 
 	@Override
@@ -342,12 +384,52 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		List<IMultiblockPart> neighborParts = new LinkedList<IMultiblockPart>();
 		for(CoordTriplet neighbor : neighbors) {
 			te = this.worldObj.getBlockTileEntity(neighbor.x, neighbor.y, neighbor.z);
-			if(te != null && te instanceof IMultiblockPart) {
+			if(te instanceof IMultiblockPart) {
 				neighborParts.add((IMultiblockPart)te);
 			}
 		}
 		IMultiblockPart[] tmp = new IMultiblockPart[neighborParts.size()];
 		return neighborParts.toArray(tmp);
+	}
+	
+	@Override
+	public void onOrphaned() {
+		if(this.isConnected()) {
+			// Well, we're not REALLY an orphan.
+			return;
+		}
+		
+		createNewMultiblock();
+		// Now for fun. Add all neighbors and DFS out into the world.
+		Queue<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
+		// Add all unconnected neighbors
+		CoordTriplet[] neighborCoords = getNeighborCoords();
+		for(CoordTriplet coord : neighborCoords) {
+			TileEntity neighborTE = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
+			if(neighborTE instanceof IMultiblockPart && !((IMultiblockPart)neighborTE).isConnected()) {
+				partsToCheck.add((IMultiblockPart)neighborTE);
+			}
+		}
+
+		IMultiblockPart part;
+		while(!partsToCheck.isEmpty()) {
+			part = partsToCheck.remove();
+			if(part.isConnected()) {
+				// Ignore connected parts that aren't us
+				continue;
+			}
+			
+			// We're already connected by virtue of the new controller
+			this.controller.attachBlock(part);
+			
+			// Add all unconnected neighbors of this part
+			IMultiblockPart[] neighborParts = part.getNeighboringParts();
+			for(IMultiblockPart neighbor : neighborParts) {
+				if(!neighbor.isConnected()) {
+					partsToCheck.add(neighbor);
+				}
+			}
+		}
 	}
 
 	///// Private/Protected Logic Helpers
@@ -365,9 +447,9 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	/*
 	 * Detaches this block from its controller. Calls detachBlock() and clears the controller member.
 	 */
-	protected void detachSelf() {
+	protected void detachSelf(boolean chunkUnloading) {
 		if(this.controller != null) {
-			this.controller.detachBlock(this);
+			this.controller.detachBlock(this, chunkUnloading);
 			this.controller = null;
 		}
 	}

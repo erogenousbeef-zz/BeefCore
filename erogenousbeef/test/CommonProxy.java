@@ -14,5 +14,4 @@ public class CommonProxy {
 		TestMod.registerTileEntities();
 		TickRegistry.registerTickHandler(new MultiblockServerTickHandler(), Side.SERVER);
 	}
-	
 }

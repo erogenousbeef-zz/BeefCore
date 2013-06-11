@@ -82,4 +82,9 @@ public class CoordTriplet implements Comparable {
 		else if(this.z > z) { return ForgeDirection.SOUTH; }
 		else { return ForgeDirection.UNKNOWN; }
 	}
+	
+	@Override
+	public String toString() {
+		return String.format("(%d, %d, %d)", this.x, this.y, this.z);
+	}
 }

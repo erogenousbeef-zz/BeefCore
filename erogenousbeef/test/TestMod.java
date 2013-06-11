@@ -3,15 +3,21 @@ package erogenousbeef.test;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraftforge.common.MinecraftForge;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.Init;
 import cpw.mods.fml.common.Mod.Instance;
 import cpw.mods.fml.common.Mod.PreInit;
+import cpw.mods.fml.common.Mod.ServerAboutToStart;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import erogenousbeef.core.multiblock.MultiblockEventHandler;
 import erogenousbeef.test.client.RendererMultiblockTester;
 import erogenousbeef.test.common.BlockMultiblockTester;
 import erogenousbeef.test.common.ItemBlockMultiblockTester;
@@ -39,6 +45,8 @@ public class TestMod {
 
 	public static Block blockMultiblockTester;
 	
+	private MultiblockEventHandler multiblockEventHandler;
+	
 	@PreInit
 	public void preInit(FMLPreInitializationEvent evt) {
 		proxy.preInit();
@@ -61,6 +69,12 @@ public class TestMod {
 			// Register other stuff here
 		}
 		INITIALIZED = true;
+	}
+
+	@ServerAboutToStart
+	public void registerServer(FMLServerAboutToStartEvent evt) {
+		multiblockEventHandler = new MultiblockEventHandler();
+		MinecraftForge.EVENT_BUS.register(multiblockEventHandler);
 	}
 	
 	public static void registerTileEntities() {

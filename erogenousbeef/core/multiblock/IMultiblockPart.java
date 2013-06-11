@@ -73,16 +73,19 @@ public interface IMultiblockPart {
 	// They're for use by Multiblock Controllers.
 	
 	/**
-	 * Set the graph-traversal (walk) distance from the reference block to this block.
-	 * @param newDistance The new current distance from the reference block to this block.
+	 * Set that this block has been visited by your validation algorithms.
 	 */
-	public void setDistance(int newDistance);
+	public void setVisited();
 	
 	/**
-	 * Get the graph-traversal distance from the reference block to this block.
-	 * @return The graph-traversal (walk) distance from the reference block to this block.
+	 * Set that this block has not been visited by your validation algorithms;
 	 */
-	public int getDistanceFromReferenceCoord();
+	public void setUnvisited();
+	
+	/**
+	 * @return True if this block has been visited by your validation algorithms since the last reset.
+	 */
+	public boolean isVisited();
 	
 	/**
 	 * Called when this block becomes the designated block for saving data and
@@ -184,4 +187,18 @@ public interface IMultiblockPart {
 	 * @param z The z coordinate at which this tile entity exists.
 	 */
 	public void onBlockAdded(World world, int x, int y, int z);
+
+	/**
+	 * Called when the chunk to which a part has been added is finished loading.
+	 */
+	public void onChunkLoad();
+
+	/**
+	 * Called when a block is split off from a machine due to disconnection from the
+	 * main body of the machine; that is, it no longer has a valid path back
+	 * to the machine's reference coordinate.
+	 * Generally, this block should start a new machine and add all nearby
+	 * compatible unconnected blocks to the new machine.
+	 */
+	public void onOrphaned();
 }
