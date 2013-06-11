@@ -514,7 +514,7 @@ public abstract class MultiblockControllerBase {
 			this.blocksHaveChangedThisFrame = false;
 		}
 		
-		if(this.assemblyState != AssemblyState.Paused) {
+		if(this.assemblyState == AssemblyState.Assembled) {
 			update();
 		}
 	}
@@ -523,7 +523,7 @@ public abstract class MultiblockControllerBase {
 	 * The update loop! Use this similarly to a TileEntity's update loop.
 	 * You do not need to call your superclass' update() if you're directly
 	 * derived from MultiblockControllerBase. This is a callback.
-	 * Note that this will not be called if the machine is paused.
+	 * Note that this will only be called when the machine is assembled.
 	 */
 	protected abstract void update();
 	
