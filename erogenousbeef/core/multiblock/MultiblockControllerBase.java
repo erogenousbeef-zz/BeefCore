@@ -235,6 +235,9 @@ public abstract class MultiblockControllerBase {
 			// ConnectedBlocks can be empty due to chunk unloading. This is OK. We'll die next frame.
 			if(!this.connectedBlocks.isEmpty()) {
 				for(CoordTriplet connectedCoord : connectedBlocks) {
+					TileEntity te = this.worldObj.getBlockTileEntity(connectedCoord.x, connectedCoord.y, connectedCoord.z);
+					if(te == null) { continue; } // Chunk unload has removed this block. It'll get hit soon. Ignore it.
+					
 					if(referenceCoord == null) {
 						referenceCoord = connectedCoord;
 					}
