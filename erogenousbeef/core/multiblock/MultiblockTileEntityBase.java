@@ -56,6 +56,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		TileEntity remoteTE;
 		IMultiblockPart remotePart;
 		IMultiblockPart connectionTarget = null;
+		CoordTriplet targetCoord = null;
 
 		List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
 
@@ -72,6 +73,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 						if(connectionTarget == null || connectionTarget.getMultiblockController().getReferenceCoord().compareTo(remotePart.getMultiblockController().getReferenceCoord()) > 0) {
 							// Different machine controller, better target. Or first controller encountered.
 							connectionTarget = remotePart;
+							targetCoord = coord;
 						}
 						controllers.add(remotePart.getMultiblockController());						
 					}
@@ -81,10 +83,17 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 							// Okay, we need to see if this is a "better" connection candidate;
 							// That is, it's also a compatible machine AND this part's controller
 							// has a refcoord smaller than the existing target.
-							// TODO: This.
+							if(targetCoord == null) {
+								targetCoord = coord;
+							}
+							else if(coord.compareTo(targetCoord) < 0) {
+								// We found a "better" target.
+								targetCoord = coord;
+								connectionTarget = remotePart;
+							}
+							// Else, current target is better, continue using it.
 						}
 						// Else, it's a machine that we've already decided not to connect to.
-						// IT WILL BECOME PART OF US LATER.
 					}
 				}
 			}
