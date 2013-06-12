@@ -193,7 +193,7 @@ public abstract class MultiblockControllerBase {
 		if(chunkUnloading) {
 			if(this.assemblyState == AssemblyState.Assembled) {
 				this.assemblyState = AssemblyState.Paused;
-				this.onMachinePaused();
+				this.pauseMachine();
 			}
 		}
 
