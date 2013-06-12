@@ -10,6 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
 
 import erogenousbeef.core.common.CoordTriplet;
 
@@ -520,7 +521,23 @@ public abstract class MultiblockControllerBase {
 		}
 		
 		if(this.assemblyState == AssemblyState.Assembled) {
-			update();
+			if(update()) {
+				// If our chunks are all loaded, then save them, because we've changed stuff.
+				if(this.worldObj.checkChunksExist(minimumCoord.x, minimumCoord.y, minimumCoord.z, maximumCoord.x, maximumCoord.y, maximumCoord.z)) {
+					int minChunkX = minimumCoord.x >> 4;
+					int minChunkZ = minimumCoord.z >> 4;
+					int maxChunkX = maximumCoord.x >> 4;
+					int maxChunkZ = maximumCoord.z >> 4;
+					
+					for(int x = minChunkX; x <= maxChunkX; x++) {
+						for(int z = minChunkZ; z <= maxChunkZ; z++) {
+							// Ensure that we save our data, even if the our save delegate is in has no TEs.
+							Chunk chunkToSave = this.worldObj.getChunkFromChunkCoords(x, z);
+							chunkToSave.setChunkModified();
+						}
+					}
+				}
+			}
 		}
 	}
 	
@@ -529,8 +546,9 @@ public abstract class MultiblockControllerBase {
 	 * You do not need to call your superclass' update() if you're directly
 	 * derived from MultiblockControllerBase. This is a callback.
 	 * Note that this will only be called when the machine is assembled.
+	 * @return True if the multiblock should save data, i.e. its internal game state has changed. False otherwise.
 	 */
-	protected abstract void update();
+	protected abstract boolean update();
 	
 	/**
 	 * Visits all blocks via a breadth-first walk of neighbors from the
