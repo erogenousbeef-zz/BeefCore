@@ -2,6 +2,8 @@ package erogenousbeef.core.multiblock;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
@@ -25,7 +27,7 @@ public abstract class MultiblockControllerBase {
 	protected enum AssemblyState { Disassembled, Assembled, Paused };
 	protected AssemblyState assemblyState;
 
-	protected LinkedList<CoordTriplet> connectedBlocks;
+	protected Set<CoordTriplet> connectedBlocks;
 	
 	/** This is a deterministically-picked coordinate that identifies this
 	 * multiblock uniquely in its dimension.
@@ -63,7 +65,7 @@ public abstract class MultiblockControllerBase {
 	protected MultiblockControllerBase(World world) {
 		// Multiblock stuff
 		worldObj = world;
-		connectedBlocks = new LinkedList<CoordTriplet>();
+		connectedBlocks = new CopyOnWriteArraySet<CoordTriplet>(); // We need this for thread-safety
 		referenceCoord = null;
 		assemblyState = AssemblyState.Disassembled;
 
@@ -447,7 +449,7 @@ public abstract class MultiblockControllerBase {
 		}
 
 		TileEntity te;
-		List<CoordTriplet> blocksToAcquire = (LinkedList<CoordTriplet>)other.connectedBlocks.clone();
+		Set<CoordTriplet> blocksToAcquire = new CopyOnWriteArraySet<CoordTriplet>(other.connectedBlocks);
 
 		// releases all blocks and references gently so they can be incorporated into another multiblock
 		other.onMergedIntoOtherController(this);
