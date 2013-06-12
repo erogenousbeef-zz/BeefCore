@@ -228,7 +228,6 @@ public abstract class MultiblockControllerBase {
 		}
 
 		blocksHaveChangedThisFrame = true;
-		this.recalculateMinMaxCoords();
 
 		// Find new save delegate if we need to.
 		if(referenceCoord == null) {
@@ -513,6 +512,7 @@ public abstract class MultiblockControllerBase {
 		
 		if(this.blocksHaveChangedThisFrame) {
 			// Assemble/break machine if we have to
+			this.recalculateMinMaxCoords();
 			checkIfMachineIsWhole();
 			this.blocksHaveChangedThisFrame = false;
 		}

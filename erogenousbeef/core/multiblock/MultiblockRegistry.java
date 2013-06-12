@@ -14,6 +14,7 @@ import net.minecraft.world.ChunkCoordIntPair;
  */
 public class MultiblockRegistry {
 	private static List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
+	private static List<MultiblockControllerBase> newControllers = new LinkedList<MultiblockControllerBase>();
 	private static List<MultiblockControllerBase> deadControllers = new LinkedList<MultiblockControllerBase>();
 	// Parts that need to be initialized.
 	private static HashMap<Long, List<IMultiblockPart>> partsAwaitingInit = new HashMap<Long, List<IMultiblockPart>>();
@@ -27,7 +28,13 @@ public class MultiblockRegistry {
 	public static void tick() {
 		if(!deadControllers.isEmpty()) {
 			controllers.removeAll(deadControllers);
+			newControllers.removeAll(deadControllers);
 			deadControllers.clear();
+		}
+		
+		if(!newControllers.isEmpty()) {
+			controllers.addAll(newControllers);
+			newControllers.clear();
 		}
 
 		for(MultiblockControllerBase reactor : controllers) {
@@ -40,11 +47,8 @@ public class MultiblockRegistry {
 	 * @param reactor The machine that should begin receiving world ticks.
 	 */
 	public static void register(MultiblockControllerBase reactor) {
-		if(!controllers.contains(reactor)) {
-			controllers.add(reactor);
-		}
-		else {
-			// TODO: Log a warning
+		if(!controllers.contains(reactor) && !newControllers.contains(reactor)) {
+			newControllers.add(reactor);
 		}
 	}
 
