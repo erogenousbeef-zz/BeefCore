@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import net.minecraft.world.ChunkCoordIntPair;
 
@@ -13,9 +15,7 @@ import net.minecraft.world.ChunkCoordIntPair;
  * Register when your multiblock is created and unregister it when it loses its last connected block.
  */
 public class MultiblockRegistry {
-	private static List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
-	private static List<MultiblockControllerBase> newControllers = new LinkedList<MultiblockControllerBase>();
-	private static List<MultiblockControllerBase> deadControllers = new LinkedList<MultiblockControllerBase>();
+	private static Set<MultiblockControllerBase> controllers = new CopyOnWriteArraySet<MultiblockControllerBase>();
 	// Parts that need to be initialized.
 	private static HashMap<Long, List<IMultiblockPart>> partsAwaitingInit = new HashMap<Long, List<IMultiblockPart>>();
 	
@@ -26,17 +26,6 @@ public class MultiblockRegistry {
 	 * Called once per world-tick when this object is registered.
 	 */
 	public static void tick() {
-		if(!deadControllers.isEmpty()) {
-			controllers.removeAll(deadControllers);
-			newControllers.removeAll(deadControllers);
-			deadControllers.clear();
-		}
-		
-		if(!newControllers.isEmpty()) {
-			controllers.addAll(newControllers);
-			newControllers.clear();
-		}
-
 		for(MultiblockControllerBase reactor : controllers) {
 			reactor.updateMultiblockEntity();
 		}
@@ -47,9 +36,7 @@ public class MultiblockRegistry {
 	 * @param reactor The machine that should begin receiving world ticks.
 	 */
 	public static void register(MultiblockControllerBase reactor) {
-		if(!controllers.contains(reactor) && !newControllers.contains(reactor)) {
-			newControllers.add(reactor);
-		}
+		controllers.add(reactor);
 	}
 
 	/**
@@ -57,7 +44,7 @@ public class MultiblockRegistry {
 	 * @param reactor The machine that should no longer receive world ticks.
 	 */
 	public static void unregister(MultiblockControllerBase reactor) {
-		deadControllers.add(reactor);
+		controllers.remove(reactor);
 	}
 	
 	/**
