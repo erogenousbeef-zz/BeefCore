@@ -21,6 +21,8 @@ import erogenousbeef.core.common.CoordTriplet;
  * Subordinate TileEntities implement the IMultiblockPart class and, generally, should not have an update() loop.
  */
 public abstract class MultiblockControllerBase {
+	public static final short DIMENSION_UNBOUNDED = -1;
+
 	// Multiblock stuff - do not mess with
 	protected World worldObj;
 	
@@ -265,10 +267,45 @@ public abstract class MultiblockControllerBase {
 	protected abstract int getMinimumNumberOfBlocksForAssembledMachine();
 
 	/**
+	 * Returns the maximum X dimension size of the machine, or -1 (DIMENSION_UNBOUNDED) to disable
+	 * dimension checking in X. (This is not recommended.)
+	 * @return The maximum X dimension size of the machine, or -1 
+	 */
+	protected abstract int getMaximumXSize();
+
+	/**
+	 * Returns the maximum Z dimension size of the machine, or -1 (DIMENSION_UNBOUNDED) to disable
+	 * dimension checking in X. (This is not recommended.)
+	 * @return The maximum Z dimension size of the machine, or -1 
+	 */
+	protected abstract int getMaximumZSize();
+
+	/**
+	 * Returns the maximum Y dimension size of the machine, or -1 (DIMENSION_UNBOUNDED) to disable
+	 * dimension checking in X. (This is not recommended.)
+	 * @return The maximum Y dimension size of the machine, or -1 
+	 */
+	protected abstract int getMaximumYSize();
+	
+	
+	/**
 	 * @return True if the machine is "whole" and should be assembled. False otherwise.
 	 */
 	protected boolean isMachineWhole() {
 		if(connectedBlocks.size() >= getMinimumNumberOfBlocksForAssembledMachine()) {
+			// Quickly check for exceeded dimensions
+			int deltaX = maximumCoord.x - minimumCoord.x + 1;
+			int deltaY = maximumCoord.y - minimumCoord.y + 1;
+			int deltaZ = maximumCoord.z - minimumCoord.z + 1;
+			
+			int maxX = getMaximumXSize();
+			int maxY = getMaximumYSize();
+			int maxZ = getMaximumZSize();
+			
+			if(maxX > 0 && deltaX > maxX) { return false; }
+			if(maxY > 0 && deltaY > maxY) { return false; }
+			if(maxZ > 0 && deltaZ > maxZ) { return false; }
+			
 			// Now we run a simple check on each block within that volume.
 			// Any block deviating = NO DEAL SIR
 			TileEntity te;
