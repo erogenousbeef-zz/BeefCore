@@ -4,6 +4,7 @@ import java.util.EnumSet;
 
 import net.minecraft.world.World;
 
+import cpw.mods.fml.common.IScheduledTickHandler;
 import cpw.mods.fml.common.ITickHandler;
 import cpw.mods.fml.common.TickType;
 
@@ -15,13 +16,13 @@ import cpw.mods.fml.common.TickType;
  * SERVER and WORLD ticks only run on the server.
  * WORLDLOAD ticks run only on the server, and only when worlds are loaded.
  */
-public class MultiblockServerTickHandler implements ITickHandler {
+public class MultiblockServerTickHandler implements IScheduledTickHandler {
 
 	@Override
 	public void tickStart(EnumSet<TickType> type, Object... tickData) {
 		if(type.contains(TickType.WORLD)) {
 			World world = (World)tickData[0];
-			MultiblockRegistry.tick();
+			MultiblockRegistry.tick(world);
 		}
 	}
 
@@ -37,5 +38,10 @@ public class MultiblockServerTickHandler implements ITickHandler {
 	@Override
 	public String getLabel() {
 		return "BigReactors:MultiblockServerTickHandler";
+	}
+
+	@Override
+	public int nextTickSpacing() {
+		return 1;
 	}
 }

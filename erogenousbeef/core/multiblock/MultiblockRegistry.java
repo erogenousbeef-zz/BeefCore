@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.World;
 
 /**
  * This is a very simple static singleton registry class, used to send ticks to active multiblocks.
@@ -25,9 +26,11 @@ public class MultiblockRegistry {
 	/**
 	 * Called once per world-tick when this object is registered.
 	 */
-	public static void tick() {
+	public static void tick(World world) {
 		for(MultiblockControllerBase reactor : controllers) {
-			reactor.updateMultiblockEntity();
+			if(reactor.worldObj == world) {
+				reactor.updateMultiblockEntity();
+			}
 		}
 	}
 	
