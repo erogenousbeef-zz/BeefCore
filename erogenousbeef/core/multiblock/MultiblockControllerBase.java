@@ -457,6 +457,12 @@ public abstract class MultiblockControllerBase {
 	private void pauseMachine() {
 		TileEntity te;
 		for(CoordTriplet coord : connectedBlocks) {
+			if(!this.worldObj.checkChunksExist(coord.x, coord.y, coord.z, coord.x, coord.y, coord.z)) {
+				// Chunk is already unloaded, don't fetch the TE.
+				// This happens on SMP servers when players log out.
+				continue;
+			}
+			
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
 			if(te instanceof IMultiblockPart) {
 				((IMultiblockPart)te).onMachineBroken();
