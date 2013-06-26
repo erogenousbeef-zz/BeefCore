@@ -1,6 +1,7 @@
 package erogenousbeef.core.multiblock;
 
 import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.*;
 import net.minecraftforge.event.world.ChunkEvent;
@@ -14,6 +15,14 @@ public class MultiblockEventHandler {
 	@ForgeSubscribe(priority = EventPriority.NORMAL)
 	public void onChunkLoad(ChunkEvent.Load loadEvent) {
 		Chunk chunk = loadEvent.getChunk();
-		MultiblockRegistry.onChunkLoaded(ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
+		World world = loadEvent.world;
+		MultiblockRegistry.onChunkLoaded(world, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
+	}
+	
+	@ForgeSubscribe(priority = EventPriority.NORMAL)
+	public void onChunkUnload(ChunkEvent.Unload unloadEvent) {
+		Chunk chunk = unloadEvent.getChunk();
+		World world = unloadEvent.world;
+		MultiblockRegistry.onChunkUnloaded(world, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
 	}
 }

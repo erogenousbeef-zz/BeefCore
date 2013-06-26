@@ -163,9 +163,10 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		detachSelf(false);
 	}
 	
+	// Called -immediately- when a chunk is unloaded.
+	// Quickly detach from the controller.
 	@Override
-	public void onChunkUnload() {
-		super.onChunkUnload();
+	public void onChunkUnloaded() {
 		detachSelf(true);
 	}
 
@@ -205,7 +206,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		
 		if(!this.worldObj.getChunkProvider().chunkExists(xCoord >> 4, zCoord >> 4)) {
 			boolean priority = this.cachedMultiblockData != null;
-			MultiblockRegistry.onPartLoaded(ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this, priority);
+			MultiblockRegistry.onPartLoaded(this.worldObj, ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this, priority);
 		}
 	}
 	
@@ -368,7 +369,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void onAttached(MultiblockControllerBase newController) {
 		this.controller = newController;
-		CoordTriplet ref = controller.getReferenceCoord();
 	}
 	
 	@Override

@@ -111,7 +111,7 @@ public abstract class MultiblockControllerBase {
 
 		// No need to re-add a block
 		if(connectedBlocks.contains(coord)) {
-			return;
+			throw new IllegalArgumentException("Double-adding a block; this is not valid, please report to github.com/erogenousbeef/BigReactors");
 		}
 
 		connectedBlocks.add(coord);

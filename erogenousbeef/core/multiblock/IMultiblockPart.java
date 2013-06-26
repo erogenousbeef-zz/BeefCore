@@ -201,4 +201,21 @@ public interface IMultiblockPart {
 	 * compatible unconnected blocks to the new machine.
 	 */
 	public void onOrphaned();
+
+	/**
+	 * Called immediately when the chunk in which this part exists is unloaded.
+	 * Use this to perform unregistrations and cleanup between the MultiblockPart and its
+	 * controller.
+	 * This is different from the built-in Minecraft onChunkUnLoad. 
+	 * That method is called during the world tick _after_ the containing chunk has
+	 * been unloaded, and should be used for internal cleanup that does not reference
+	 * other objects.
+	 */
+	public void onChunkUnloaded();
+	
+	/**
+	 * Standard TileEntity method. 
+	 * @return The World object associated with this TileEntity
+	 */
+	public World getWorldObj();
 }
