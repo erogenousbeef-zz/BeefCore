@@ -34,7 +34,7 @@ public class MultiblockRegistry {
 	 */
 	public static void tick(World world) {
 		for(MultiblockControllerBase reactor : controllers) {
-			if(reactor.worldObj == world) {
+			if(reactor.worldObj == world && reactor.worldObj.isRemote == world.isRemote) {
 				reactor.updateMultiblockEntity();
 			}
 		}
@@ -72,7 +72,6 @@ public class MultiblockRegistry {
 		
 		int dimensionId = world.provider.dimensionId;
 		putPartInList(destList, dimensionId, chunkCoord, part);
-		putPartInList(loadedParts, dimensionId, chunkCoord, part);
 	}
 	
 	public static void onChunkLoaded(World world, long chunkCoord) {
@@ -103,6 +102,16 @@ public class MultiblockRegistry {
 			}
 			loadedParts.get(dimensionId).remove(chunkCoord);
 		}
+	}
+
+	/**
+	 * Register a part as having been loaded, regardless of whether it has been initialized or not.
+	 * @param world The world into which this part is loading.
+	 * @param chunkCoord The chunk at which this part is located.
+	 * @param part The part being loaded.
+	 */
+	public static void registerPart(World world, long chunkCoord, IMultiblockPart part) {
+		putPartInList(loadedParts, world.provider.dimensionId, chunkCoord, part);
 	}
 	
 	/// *** PRIVATE HELPERS *** ///

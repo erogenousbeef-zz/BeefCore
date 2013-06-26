@@ -39,7 +39,7 @@ public class TestMultiblockController extends MultiblockControllerBase {
 
 	@Override
 	public void detachBlock(IMultiblockPart part, boolean chunkUnloading) {
-		System.out.println("Controller " + Integer.toString(ordinal) + " detaching block at " + part.getWorldLocation().toString());
+		System.out.println("Controller " + Integer.toString(ordinal) + (worldObj.isRemote ? " (client)" : " (server)") + " detaching block at " + part.getWorldLocation().toString());
 		super.detachBlock(part, chunkUnloading);
 	}
 	
@@ -84,7 +84,23 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	}
 
 	@Override
-	protected void update() {
+	protected boolean update() {
+		return false;
+	}
+
+	@Override
+	protected int getMaximumXSize() {
+		return 16;
+	}
+
+	@Override
+	protected int getMaximumZSize() {
+		return 16;
+	}
+
+	@Override
+	protected int getMaximumYSize() {
+		return 16;
 	}
 	
 }

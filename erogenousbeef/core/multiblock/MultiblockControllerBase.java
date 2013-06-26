@@ -1,5 +1,6 @@
 package erogenousbeef.core.multiblock;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -111,7 +112,7 @@ public abstract class MultiblockControllerBase {
 
 		// No need to re-add a block
 		if(connectedBlocks.contains(coord)) {
-			throw new IllegalArgumentException("Double-adding a block; this is not valid, please report to github.com/erogenousbeef/BigReactors");
+			throw new IllegalArgumentException("Double-adding a block @ " + coord.toString() + "; this is not valid, please report to github.com/erogenousbeef/BigReactors");
 		}
 
 		connectedBlocks.add(coord);
@@ -181,8 +182,8 @@ public abstract class MultiblockControllerBase {
 	public void detachBlock(IMultiblockPart part, boolean chunkUnloading) {
 		_detachBlock(part, chunkUnloading);
 		
-		// If we've lost blocks while disassembled, split up our machine. Can result in up to 6 new TEs.
-		if(!chunkUnloading && this.assemblyState == AssemblyState.Disassembled) {
+		// If we've lost blocks and it's not due to chunk unload, try to split up our machine. Can result in up to 6 new TEs.
+		if(!chunkUnloading) {
 			this.revisitBlocks();
 		}
 	}
@@ -543,6 +544,11 @@ public abstract class MultiblockControllerBase {
 	 */
 	public void endMerging() {
 		this.recalculateMinMaxCoords();
+		
+		// Update all involved blocks, because stuff has likely changed dramatically
+		for(CoordTriplet c : connectedBlocks) {
+			this.worldObj.markBlockForUpdate(c.x, c.y, c.z);
+		}
 	}
 	
 	/**
@@ -608,8 +614,15 @@ public abstract class MultiblockControllerBase {
 		
 		// Reset visitations and find the minimum coordinate
 		for(CoordTriplet c: connectedBlocks) {
+			// This happens during chunk unload.
+			if(!this.worldObj.getChunkProvider().chunkExists(c.x >> 4, c.z >> 4)) {
+				continue; 
+			}
+
 			te = this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
-			if(te == null) { continue; } // This happens during chunk unload. Consider it valid, move on.
+			if(te == null) { 
+				continue; 
+			} // This happens during chunk unload. Consider it valid, move on.
 
 			((IMultiblockPart)te).setUnvisited();
 			
@@ -652,12 +665,21 @@ public abstract class MultiblockControllerBase {
 		
 		// First, remove any blocks that are still disconnected.
 		List<IMultiblockPart> orphans = new LinkedList<IMultiblockPart>();
+		List<CoordTriplet> deadBlocks = new ArrayList<CoordTriplet>();
 		for(CoordTriplet c : connectedBlocks) {
+			if(!this.worldObj.getChunkProvider().chunkExists(c.x >> 4, c.z >> 4)) {
+				deadBlocks.add(c);
+				continue; 
+			}
+			
 			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
 			if(!part.isVisited()) {
 				orphans.add(part);
 			}
 		}
+		
+		// Trim any blocks that were in bad chunks. They're dead Jim. Nothing we can do.
+		this.connectedBlocks.removeAll(deadBlocks);
 		
 		// Remove all orphaned parts. i.e. Actually orphan them.
 		for(IMultiblockPart orphan : orphans) {

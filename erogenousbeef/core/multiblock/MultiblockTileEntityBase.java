@@ -1,5 +1,6 @@
 package erogenousbeef.core.multiblock;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -51,7 +52,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 */
 	@Override
 	public void onBlockAdded(World world, int x, int y, int z) {
-		CoordTriplet[] coordsToCheck = getNeighborCoords();
+		IMultiblockPart[] partsToCheck = getNeighboringParts();
 		
 		TileEntity remoteTE;
 		IMultiblockPart remotePart;
@@ -60,41 +61,38 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 		List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
 
-		// Check all adjacent blocks for controllers. If they're all the same controller,
+		// Check all adjacent loaded blocks for controllers. If they're all the same controller,
 		// attach via the "closest" one. Otherwise, attach to the closest one and then
 		// merge all controllers.
-		for(CoordTriplet coord : coordsToCheck) {
-			remoteTE = world.getBlockTileEntity(coord.x, coord.y, coord.z);
-			
-			if(remoteTE instanceof IMultiblockPart) {
-				remotePart = (IMultiblockPart)remoteTE;
-				if(remotePart.isConnected()) {
-					if(!controllers.contains(remotePart.getMultiblockController())) {
-						if(connectionTarget == null || connectionTarget.getMultiblockController().getReferenceCoord().compareTo(remotePart.getMultiblockController().getReferenceCoord()) > 0) {
-							// Different machine controller, better target. Or first controller encountered.
-							connectionTarget = remotePart;
+		for(IMultiblockPart neighborPart : partsToCheck) {
+			if(neighborPart.isConnected()) {
+				CoordTriplet coord = neighborPart.getWorldLocation();
+				if(!controllers.contains(neighborPart.getMultiblockController())) {
+					if(connectionTarget == null || connectionTarget.getMultiblockController().getReferenceCoord().compareTo(neighborPart.getMultiblockController().getReferenceCoord()) > 0) {
+						// Different machine controller, better target. Or first controller encountered.
+						connectionTarget = neighborPart;
+						targetCoord = coord;
+					}
+					controllers.add(neighborPart.getMultiblockController());						
+				}
+				else {
+					// We've already encountered this one, so first check if it's the same machine.
+					if(neighborPart.getMultiblockController() != connectionTarget.getMultiblockController()) {
+						// Okay, we need to see if this is a "better" connection candidate;
+						// That is, it's also a compatible machine AND this part's controller
+						// has a refcoord smaller than the existing target.
+						if(targetCoord == null) {
 							targetCoord = coord;
+							connectionTarget = neighborPart;
 						}
-						controllers.add(remotePart.getMultiblockController());						
-					}
-					else {
-						// We've already encountered this one, so first check if it's the same machine.
-						if(remotePart.getMultiblockController() != connectionTarget.getMultiblockController()) {
-							// Okay, we need to see if this is a "better" connection candidate;
-							// That is, it's also a compatible machine AND this part's controller
-							// has a refcoord smaller than the existing target.
-							if(targetCoord == null) {
-								targetCoord = coord;
-							}
-							else if(coord.compareTo(targetCoord) < 0) {
-								// We found a "better" target.
-								targetCoord = coord;
-								connectionTarget = remotePart;
-							}
-							// Else, current target is better, continue using it.
+						else if(coord.compareTo(targetCoord) < 0) {
+							// We found a "better" target.
+							targetCoord = coord;
+							connectionTarget = neighborPart;
 						}
-						// Else, it's a machine that we've already decided not to connect to.
+						// Else, current target is better, continue using it.
 					}
+					// Else, it's a machine that we've already decided not to connect to.
 				}
 			}
 		} // End search for connection target
@@ -169,6 +167,16 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void onChunkUnloaded() {
 		detachSelf(true);
 	}
+	
+	@Override
+	public void onChunkUnload() {
+		super.onChunkUnload();
+		
+		// On the client, this can be relied upon, I hope.
+		if(this.worldObj.isRemote) {
+			detachSelf(true);
+		}
+	}
 
 	// This is actually called from a special hacked chunk-load event detector, because
 	// minecraft won't tell us this directly. :(
@@ -204,9 +212,13 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void validate() {
 		super.validate();
 		
-		if(!this.worldObj.getChunkProvider().chunkExists(xCoord >> 4, zCoord >> 4)) {
-			boolean priority = this.cachedMultiblockData != null;
-			MultiblockRegistry.onPartLoaded(this.worldObj, ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this, priority);
+		if(!this.worldObj.isRemote) {
+			MultiblockRegistry.registerPart(this.worldObj, ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this);
+			
+			if(!this.worldObj.getChunkProvider().chunkExists(xCoord >> 4, zCoord >> 4)) {
+				boolean priority = this.cachedMultiblockData != null;
+				MultiblockRegistry.onPartLoaded(this.worldObj, ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this, priority);
+			}
 		}
 	}
 	
@@ -373,8 +385,11 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	
 	@Override
 	public void onDetached(MultiblockControllerBase oldController) {
-		if(this.controller != oldController) {
-			throw new IllegalArgumentException("Detaching from wrong controller");
+		if(this.controller == null) {
+			throw new IllegalArgumentException("Detaching but the current controller is already null!");
+		}
+		else if(this.controller != oldController) {
+			throw new IllegalArgumentException("Detaching from wrong controller, old @ " + oldController.hashCode() + " current @ " + this.controller.hashCode());
 		}
 
 		this.controller = null;
@@ -388,10 +403,23 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 	@Override
 	public IMultiblockPart[] getNeighboringParts() {
-		CoordTriplet[] neighbors = getNeighborCoords();
+		CoordTriplet[] neighbors = new CoordTriplet[] {
+				new CoordTriplet(this.xCoord-1, this.yCoord, this.zCoord),
+				new CoordTriplet(this.xCoord, this.yCoord-1, this.zCoord),
+				new CoordTriplet(this.xCoord, this.yCoord, this.zCoord-1),
+				new CoordTriplet(this.xCoord, this.yCoord, this.zCoord+1),
+				new CoordTriplet(this.xCoord, this.yCoord+1, this.zCoord),
+				new CoordTriplet(this.xCoord+1, this.yCoord, this.zCoord)
+		};
+
 		TileEntity te;
-		List<IMultiblockPart> neighborParts = new LinkedList<IMultiblockPart>();
+		List<IMultiblockPart> neighborParts = new ArrayList<IMultiblockPart>();
 		for(CoordTriplet neighbor : neighbors) {
+			if(!this.worldObj.getChunkProvider().chunkExists(neighbor.x >> 4, neighbor.z >> 4)) {
+				// Chunk not loaded, skip it.
+				continue;
+			}
+
 			te = this.worldObj.getBlockTileEntity(neighbor.x, neighbor.y, neighbor.z);
 			if(te instanceof IMultiblockPart) {
 				neighborParts.add((IMultiblockPart)te);
@@ -409,14 +437,15 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		}
 		
 		createNewMultiblock();
+
 		// Now for fun. Add all neighbors and DFS out into the world.
 		Queue<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
-		// Add all unconnected neighbors
-		CoordTriplet[] neighborCoords = getNeighborCoords();
-		for(CoordTriplet coord : neighborCoords) {
-			TileEntity neighborTE = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
-			if(neighborTE instanceof IMultiblockPart && !((IMultiblockPart)neighborTE).isConnected()) {
-				partsToCheck.add((IMultiblockPart)neighborTE);
+
+		// Add all unconnected neighbors in loaded chunks
+		IMultiblockPart[] neighborParts = getNeighboringParts();
+		for(IMultiblockPart neighborPart : neighborParts) {
+			if(!neighborPart.isConnected()) {
+				partsToCheck.add(neighborPart);
 			}
 		}
 
@@ -432,7 +461,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 			this.controller.attachBlock(part);
 			
 			// Add all unconnected neighbors of this part
-			IMultiblockPart[] neighborParts = part.getNeighboringParts();
+			neighborParts = part.getNeighboringParts();
 			for(IMultiblockPart neighbor : neighborParts) {
 				if(!neighbor.isConnected()) {
 					partsToCheck.add(neighbor);
@@ -461,20 +490,5 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 			this.controller.detachBlock(this, chunkUnloading);
 			this.controller = null;
 		}
-	}
-	
-	/*
-	 * Get a list containing the six coordinates neighboring this one.
-	 */
-	protected CoordTriplet[] getNeighborCoords() {
-		// It's important that these are in sorted order. MinX-MinY-MinZ-MaxZ-MaxY-MaxX
-		return new CoordTriplet[] {
-				new CoordTriplet(this.xCoord-1, this.yCoord, this.zCoord),
-				new CoordTriplet(this.xCoord, this.yCoord-1, this.zCoord),
-				new CoordTriplet(this.xCoord, this.yCoord, this.zCoord-1),
-				new CoordTriplet(this.xCoord, this.yCoord, this.zCoord+1),
-				new CoordTriplet(this.xCoord, this.yCoord+1, this.zCoord),
-				new CoordTriplet(this.xCoord+1, this.yCoord, this.zCoord)
-		};		
 	}
 }

@@ -107,7 +107,9 @@ public interface IMultiblockPart {
 	/**
 	 * Returns an array containing references to neighboring IMultiblockPart tile entities.
 	 * Primarily a utility method. Only works after tileentity construction, so it cannot be used in
-	 * MultiblockControllerBase::attachBlock
+	 * MultiblockControllerBase::attachBlock.
+	 * 
+	 * This method is chunk-safe; it will not query for parts in chunks that are unloaded.
 	 * @return An array of references to neighboring IMultiblockPart tile entities.
 	 */
 	public IMultiblockPart[] getNeighboringParts();
