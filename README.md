@@ -18,6 +18,8 @@ At the moment, you don't! I only have one active mod, Big Reactors, and I always
 
 If you'd like to check out the code, though, be my guest.
 
+If you're planning on using BeefCore in your own mod, please treat it as a fork! Change the package name to something other than "erogenousbeef.core" so that we don't have any conflicts should our mods be used together. In the future, I will distribute builds of BeefCore as a coremod, which you can then simply use as a dependency.
+
 License
 -------
 
