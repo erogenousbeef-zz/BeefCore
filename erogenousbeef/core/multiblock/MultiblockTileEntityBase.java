@@ -54,52 +54,47 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void onBlockAdded(World world, int x, int y, int z) {
 		IMultiblockPart[] partsToCheck = getNeighboringParts();
 		
-		TileEntity remoteTE;
-		IMultiblockPart remotePart;
-		IMultiblockPart connectionTarget = null;
-		CoordTriplet targetCoord = null;
-
 		List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
 
 		// Check all adjacent loaded blocks for controllers. If they're all the same controller,
 		// attach via the "closest" one. Otherwise, attach to the closest one and then
 		// merge all controllers.
 		for(IMultiblockPart neighborPart : partsToCheck) {
-			if(neighborPart.isConnected()) {
-				CoordTriplet coord = neighborPart.getWorldLocation();
-				if(!controllers.contains(neighborPart.getMultiblockController())) {
-					if(connectionTarget == null || connectionTarget.getMultiblockController().getReferenceCoord().compareTo(neighborPart.getMultiblockController().getReferenceCoord()) > 0) {
-						// Different machine controller, better target. Or first controller encountered.
-						connectionTarget = neighborPart;
-						targetCoord = coord;
-					}
-					controllers.add(neighborPart.getMultiblockController());						
-				}
-				else {
-					// We've already encountered this one, so first check if it's the same machine.
-					if(neighborPart.getMultiblockController() != connectionTarget.getMultiblockController()) {
-						// Okay, we need to see if this is a "better" connection candidate;
-						// That is, it's also a compatible machine AND this part's controller
-						// has a refcoord smaller than the existing target.
-						if(targetCoord == null) {
-							targetCoord = coord;
-							connectionTarget = neighborPart;
-						}
-						else if(coord.compareTo(targetCoord) < 0) {
-							// We found a "better" target.
-							targetCoord = coord;
-							connectionTarget = neighborPart;
-						}
-						// Else, current target is better, continue using it.
-					}
-					// Else, it's a machine that we've already decided not to connect to.
-				}
+			if(neighborPart.isConnected() && !controllers.contains(neighborPart.getMultiblockController())) {
+				controllers.add(neighborPart.getMultiblockController());
 			}
 		} // End search for connection target
 
-		if(connectionTarget != null) {
-			controllers.remove(connectionTarget.getMultiblockController());
-			connectionTarget.getMultiblockController().attachBlock(this);
+		
+		if(controllers.size() > 0) {
+			// Now find a connection target
+			MultiblockControllerBase targetController = null;
+			
+			// Find a target
+			for(MultiblockControllerBase candidateController : controllers) {
+				// TODO: Check if controllers are compatible
+				if(targetController == null) {
+					// Okay, welp
+					targetController = candidateController;
+				}
+				else {
+					int comparison = targetController.getReferenceCoord().compareTo(candidateController.getReferenceCoord());
+					if(comparison < 0) {
+						// Target controller has a better position
+						continue;
+					} else if(comparison == 0) {
+						throw new IllegalStateException(String.format("Found two controllers (hashes %d, %d) with identical reference coord %s", targetController.hashCode(), candidateController.hashCode(), targetController.getReferenceCoord().toString()));
+					}
+					else {
+						targetController = candidateController;
+					}
+				}
+			}
+			
+			assert(targetController != null);
+			
+			controllers.remove(targetController);
+			targetController.attachBlock(this);
 
 			if(controllers.size() > 0) {
 				// Oh shit it's merge time
