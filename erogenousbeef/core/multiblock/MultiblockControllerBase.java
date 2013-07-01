@@ -485,7 +485,7 @@ public abstract class MultiblockControllerBase {
 	 * {@link erogenousbeef.core.multiblock.MultiblockControllerBase#endMerging()}
 	 */
 	public void merge(MultiblockControllerBase other) {
-		if(this.referenceCoord.compareTo(other.referenceCoord) >= 0) {
+		if(other.referenceCoord != null && this.referenceCoord.compareTo(other.referenceCoord) >= 0) {
 			throw new IllegalArgumentException("The controller with the lowest minimum-coord value must consume the one with the higher coords");
 		}
 

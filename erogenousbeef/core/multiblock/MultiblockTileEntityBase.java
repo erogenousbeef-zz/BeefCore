@@ -101,7 +101,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 				CoordTriplet hostLoc = this.controller.getReferenceCoord();
 				this.controller.beginMerging();
 				for(MultiblockControllerBase controllerToMerge : controllers) {
-					CoordTriplet mergeLoc = controllerToMerge.getReferenceCoord();
 					this.controller.merge(controllerToMerge);
 				}
 				this.controller.endMerging();
