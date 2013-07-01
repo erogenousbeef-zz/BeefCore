@@ -5,6 +5,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.*;
 import net.minecraftforge.event.world.ChunkEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 /**
  * In your mod, subscribe this on the server side to handle chunk load events
@@ -26,5 +27,10 @@ public class MultiblockEventHandler {
 		World world = unloadEvent.world;
 		if(world.isRemote) { return; }
 		MultiblockRegistry.onChunkUnloaded(world, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
+	}
+	
+	@ForgeSubscribe(priority = EventPriority.NORMAL)
+	public void onWorldUnload(WorldEvent.Unload unloadWorldEvent) {
+		MultiblockRegistry.onWorldUnloaded(unloadWorldEvent.world);
 	}
 }

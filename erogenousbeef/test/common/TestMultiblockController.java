@@ -30,7 +30,7 @@ public class TestMultiblockController extends MultiblockControllerBase {
 
 	@Override
 	protected int getMinimumNumberOfBlocksForAssembledMachine() {
-		return 0;
+		return 26;
 	}
 
 	@Override
@@ -65,22 +65,22 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	
 	@Override
 	protected void onMachinePaused() {
-		System.out.println("Machine PAUSED");
+		System.out.println(String.format("Machine %d PAUSED", hashCode()));
 	}
 	
 	@Override
 	protected void onMachineAssembled() {
-		System.out.println("Machine ASSEMBLED");
+		System.out.println(String.format("Machine %d ASSEMBLED", hashCode()));
 	}
 	
 	@Override
 	protected void onMachineDisassembled() {
-		System.out.println("Machine DISASSEMBLED");
+		System.out.println(String.format("Machine %d DISASSEMBLED", hashCode()));
 	}
 
 	@Override
 	protected void onMachineRestored() {
-		System.out.println("Machine RESTORED");
+		System.out.println(String.format("Machine %d RESTORED", hashCode()));
 	}
 
 	@Override
@@ -101,6 +101,11 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	@Override
 	protected int getMaximumYSize() {
 		return 16;
+	}
+	
+	@Override
+	protected boolean isBlockGoodForInterior(World world, int x, int y, int z) {
+		return true;
 	}
 	
 }

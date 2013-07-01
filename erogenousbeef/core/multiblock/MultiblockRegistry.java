@@ -114,6 +114,18 @@ public class MultiblockRegistry {
 		putPartInList(loadedParts, world.provider.dimensionId, chunkCoord, part);
 	}
 	
+	public static void onWorldUnloaded(World world) {
+		List<MultiblockControllerBase> controllersToRemove = new ArrayList<MultiblockControllerBase>();
+		for(MultiblockControllerBase controller : controllers) {
+			if(controller.worldObj.isRemote == world.isRemote &&
+					controller.worldObj.provider.dimensionId == world.provider.dimensionId) {
+				controllersToRemove.add(controller);
+			}
+		}
+		
+		controllers.removeAll(controllersToRemove);
+	}
+	
 	/// *** PRIVATE HELPERS *** ///
 
 	private static List<IMultiblockPart> getPartListForWorldChunk(HashMap<Integer, HashMap<Long, List<IMultiblockPart>>> sourceList, int dimensionId, long chunkCoord) {

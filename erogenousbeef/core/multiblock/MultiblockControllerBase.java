@@ -205,10 +205,6 @@ public abstract class MultiblockControllerBase {
 
 		if(connectedBlocks.contains(coord)) {
 			part.onDetached(this);
-		}
-		
-		while(connectedBlocks.contains(coord))
-		{
 			connectedBlocks.remove(coord);
 			this.onBlockRemoved(part);
 
@@ -549,6 +545,8 @@ public abstract class MultiblockControllerBase {
 		for(CoordTriplet c : connectedBlocks) {
 			this.worldObj.markBlockForUpdate(c.x, c.y, c.z);
 		}
+		
+		this.blocksHaveChangedThisFrame = true;
 	}
 	
 	/**
@@ -805,4 +803,11 @@ public abstract class MultiblockControllerBase {
 	 * @param tag A compound tag containing multiblock data to import
 	 */
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
+
+	/**
+	 * @return True if this controller has no associated blocks, false otherwise
+	 */
+	public boolean isEmpty() {
+		return this.connectedBlocks.isEmpty();
+	}
 }

@@ -163,6 +163,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		detachSelf(true);
 	}
 	
+	// Called from minecraft itself; only used on the client to detach when chunks are unloading
 	@Override
 	public void onChunkUnload() {
 		super.onChunkUnload();
@@ -261,6 +262,10 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 			this.setUnvisited();
 		}
 
+		if(this.worldObj.isRemote) {
+			clientCheckForMerges();
+		}
+		
 		if(packetData.hasKey("multiblockData")) {
 			NBTTagCompound tag = packetData.getCompoundTag("multiblockData");
 			if(isConnected()) {
@@ -268,23 +273,12 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 			}
 			else {
 				if(this.worldObj.isRemote) {
-					if(!this.isConnected()) {
-						// If a client receives a desc packet and is not yet connected, forcibly connect
-						onBlockAdded(worldObj, xCoord, yCoord, zCoord);
-					}
-					getMultiblockController().decodeDescriptionPacket(tag);
+					throw new IllegalStateException("Disconnected block with multiblock data on client!");
 				}
 				else {
 					this.cachedMultiblockData = tag;
 				}
 			}
-		}
-		
-		// Ensure that client blocks are always connected,
-		// since the server doesn't do an "onBlockAdded" callback.
-		// TODO: Try removing this.
-		if(!this.isConnected() && this.worldObj.isRemote) {
-			onBlockAdded(worldObj, xCoord, yCoord, zCoord);
 		}
 	}
 
@@ -427,8 +421,8 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void onOrphaned() {
 		if(this.isConnected()) {
-			// Well, we're not REALLY an orphan.
-			return;
+			// Wait, we're not REALLY an orphan.
+			throw new IllegalStateException("Orphaning a non-orphaned block!");
 		}
 		
 		createNewMultiblock();
@@ -484,6 +478,90 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		if(this.controller != null) {
 			this.controller.detachBlock(this, chunkUnloading);
 			this.controller = null;
+		}
+	}
+	
+	/*
+	 * Special client-only remerge code, cribbed from onBlockAdded
+	 */
+	protected void clientCheckForMerges() {
+		IMultiblockPart[] partsToCheck = getNeighboringParts();
+		
+		List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
+		
+		if(this.controller != null) {
+			controllers.add(this.controller);
+		}
+
+		// Check all adjacent loaded blocks for controllers. If they're all the same controller,
+		// attach via the "closest" one. Otherwise, attach to the closest one and then
+		// merge all controllers.
+		for(IMultiblockPart neighborPart : partsToCheck) {
+			if(neighborPart.isConnected() && !controllers.contains(neighborPart.getMultiblockController())) {
+				controllers.add(neighborPart.getMultiblockController());
+			}
+		} // End search for connection target
+
+
+		if(controllers.size() == 1 && controllers.get(0) == this.controller) {
+			// We're cool. The only thing to connect was ourself.
+			return;
+		}
+		
+		if(controllers.size() > 0) {
+
+			// Now find a connection target
+			MultiblockControllerBase targetController = null;
+			
+			// Find a target
+			for(MultiblockControllerBase candidateController : controllers) {
+				// TODO: Check if controllers are compatible
+				if(targetController == null) {
+					// Okay, welp
+					targetController = candidateController;
+				}
+				else {
+					int comparison = targetController.getReferenceCoord().compareTo(candidateController.getReferenceCoord());
+					if(comparison < 0) {
+						// Target controller has a better position
+						continue;
+					} else if(comparison == 0) {
+						throw new IllegalStateException(String.format("Found two controllers (hashes %d, %d) with identical reference coord %s", targetController.hashCode(), candidateController.hashCode(), targetController.getReferenceCoord().toString()));
+					}
+					else {
+						targetController = candidateController;
+					}
+				}
+			}
+			
+			
+			assert(targetController != null);
+			
+			controllers.remove(targetController);
+			
+			if(targetController != this.controller) {
+				// Remove ourself. Mark as a chunk operation because we're going to merge it anyway
+				if(this.controller != null) {
+					this.controller.detachBlock(this, true);
+				}
+				targetController.attachBlock(this);
+			}
+
+			if(controllers.size() > 0) {
+				// Oh shit it's merge time
+				CoordTriplet hostLoc = this.controller.getReferenceCoord();
+				this.controller.beginMerging();
+				for(MultiblockControllerBase controllerToMerge : controllers) {
+					if(!controllerToMerge.isEmpty()) {
+						this.controller.merge(controllerToMerge);
+					}
+				}
+				this.controller.endMerging();
+			}
+		}
+		else {
+			// We are truly alone. New multiblock!
+			this.onOrphaned();
 		}
 	}
 }
