@@ -227,7 +227,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	
 	@Override
 	public void onDataPacket(INetworkManager network, Packet132TileEntityData packet) {
-		decodeDescriptionPacket(packet.customParam1);
+		decodeDescriptionPacket(packet.data);
 	}
 	
 	///// Things to override in most implementations (IMultiblockPart)
