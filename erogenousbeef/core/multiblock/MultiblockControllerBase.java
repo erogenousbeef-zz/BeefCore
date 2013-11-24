@@ -671,7 +671,11 @@ public abstract class MultiblockControllerBase {
 			}
 			
 			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
-			if(!part.isVisited()) {
+			// Part can be null if the chunk is currently unloading. Weird, but true.
+			if(part == null) {
+				deadBlocks.add(c);
+			}
+			else if (!part.isVisited()) {
 				orphans.add(part);
 			}
 		}
@@ -686,7 +690,7 @@ public abstract class MultiblockControllerBase {
 		
 		// Now go through and start up as many new machines as possible.
 		for(IMultiblockPart orphan : orphans) {
-			if(!orphan.isConnected()) {
+			if(orphan != null && !orphan.isConnected()) {
 				// Creating a new multiblock should capture all other orphans connected to this orphan.
 				orphan.onOrphaned();
 			}
