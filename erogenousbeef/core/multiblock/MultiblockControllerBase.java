@@ -809,6 +809,14 @@ public abstract class MultiblockControllerBase {
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
 
 	/**
+	 * Called when a client loads data from the server.
+	 * Use this for weird client-side setup side cases.
+	 */
+	public void onClientLoadedDescriptionDataFromServer() {
+		this.recalculateMinMaxCoords();
+	}
+	
+	/**
 	 * @return True if this controller has no associated blocks, false otherwise
 	 */
 	public boolean isEmpty() {

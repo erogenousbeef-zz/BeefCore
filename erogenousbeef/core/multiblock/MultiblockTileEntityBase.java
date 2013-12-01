@@ -269,6 +269,10 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 			NBTTagCompound tag = packetData.getCompoundTag("multiblockData");
 			if(isConnected()) {
 				getMultiblockController().decodeDescriptionPacket(tag);
+
+				if(this.worldObj.isRemote) {
+					getMultiblockController().onClientLoadedDescriptionDataFromServer();
+				}
 			}
 			else {
 				if(this.worldObj.isRemote) {
