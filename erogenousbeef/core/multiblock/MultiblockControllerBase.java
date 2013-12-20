@@ -66,11 +66,6 @@ public abstract class MultiblockControllerBase {
 	 */
 	private boolean chunksHaveUnloaded;
 	
-	/**
-	 * Set to true when registered with the Multiblock Registry.
-	 */
-	private boolean isRegistered;
-	
 	protected MultiblockControllerBase(World world) {
 		// Multiblock stuff
 		worldObj = world;
@@ -83,7 +78,6 @@ public abstract class MultiblockControllerBase {
 		
 		blocksHaveChangedThisFrame = false;
 		chunksHaveUnloaded = false;
-		isRegistered = false;
 	}
 
 	/**
@@ -95,7 +89,6 @@ public abstract class MultiblockControllerBase {
 	public void restore(NBTTagCompound savedData) {
 		this.readFromNBT(savedData);
 		MultiblockRegistry.register(this);
-		this.isRegistered = true;
 	}
 	
 	/**
@@ -129,7 +122,6 @@ public abstract class MultiblockControllerBase {
 		
 		if(firstBlock) {
 			MultiblockRegistry.register(this);
-			this.isRegistered = true;
 		}
 
 		if(this.referenceCoord == null) {
@@ -225,7 +217,6 @@ public abstract class MultiblockControllerBase {
 		if(connectedBlocks.isEmpty()) {
 			// Destroy/unregister
 			MultiblockRegistry.unregister(this);
-			this.isRegistered = false;
 			return;
 		}
 
@@ -531,7 +522,6 @@ public abstract class MultiblockControllerBase {
 
 		this.connectedBlocks.clear();
 		MultiblockRegistry.unregister(this);
-		this.isRegistered = false;
 		
 		this.onMachineMerge(otherController);
 	}
@@ -567,13 +557,6 @@ public abstract class MultiblockControllerBase {
 	public final void updateMultiblockEntity() {
 		if(this.connectedBlocks.isEmpty()) {
 			MultiblockRegistry.unregister(this);
-			this.isRegistered = false;
-			return;
-		}
-		
-		if(!this.isRegistered) {
-			// The server controller can be called one or two ticks after unregistration
-			// due to concurrency.
 			return;
 		}
 		
