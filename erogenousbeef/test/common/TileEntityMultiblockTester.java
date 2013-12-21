@@ -1,14 +1,14 @@
 package erogenousbeef.test.common;
 
+import java.util.Set;
+
 import org.lwjgl.opengl.GL11;
 
 import cpw.mods.fml.common.network.PacketDispatcher;
-
 import erogenousbeef.core.common.CoordTriplet;
 import erogenousbeef.core.multiblock.IMultiblockPart;
 import erogenousbeef.core.multiblock.MultiblockControllerBase;
 import erogenousbeef.core.multiblock.MultiblockTileEntityBase;
-
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.INetworkManager;
 import net.minecraft.network.packet.Packet;
@@ -44,8 +44,8 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 	}
 	
 	@Override
-	protected void formatDescriptionPacket(NBTTagCompound packetData) {
-		super.formatDescriptionPacket(packetData);
+	protected void encodeDescriptionPacket(NBTTagCompound packetData) {
+		super.encodeDescriptionPacket(packetData);
 		packetData.setInteger("colorIdx", colorIdx);
 	}
 	
@@ -58,7 +58,7 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 	}
 
 	@Override
-	public MultiblockControllerBase getNewMultiblockControllerObject() {
+	public MultiblockControllerBase createNewMultiblock() {
 		return new TestMultiblockController(this.worldObj);
 	}
 
@@ -90,8 +90,11 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 	}
 
 	@Override
-	public void onMachineAssembled() { }
-
+	public void onMachineAssembled(MultiblockControllerBase multiblockControllerBase) {}
+	
+	@Override
+	public void onMachinePaused() {}
+	
 	@Override
 	public void onMachineBroken() { }
 
@@ -100,4 +103,10 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 
 	@Override
 	public void onMachineDeactivated() { }
+
+	@Override
+	public Class<? extends MultiblockControllerBase> getMultiblockControllerType() {
+		return TestMultiblockController.class;
+	}
+
 }

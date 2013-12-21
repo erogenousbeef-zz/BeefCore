@@ -1,5 +1,6 @@
 package erogenousbeef.test.common;
 
+import cpw.mods.fml.common.FMLLog;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import erogenousbeef.core.multiblock.IMultiblockPart;
@@ -32,14 +33,18 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	protected int getMinimumNumberOfBlocksForAssembledMachine() {
 		return 26;
 	}
+	
+	@Override
+	protected void onAssimilate(MultiblockControllerBase assimilated) {
+	}
 
 	@Override
-	protected void onMachineMerge(MultiblockControllerBase otherMachine) {
+	protected void onAssimilated(MultiblockControllerBase otherMachine) {
 	}
 
 	@Override
 	public void detachBlock(IMultiblockPart part, boolean chunkUnloading) {
-		System.out.println("Controller " + Integer.toString(ordinal) + (worldObj.isRemote ? " (client)" : " (server)") + " detaching block at " + part.getWorldLocation().toString());
+		FMLLog.info("[%s] Controller %d detaching block at %s", (worldObj.isRemote ? "CLIENT" : "SERVER"), ordinal, part.getWorldLocation());
 		super.detachBlock(part, chunkUnloading);
 	}
 	
@@ -65,22 +70,22 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	
 	@Override
 	protected void onMachinePaused() {
-		System.out.println(String.format("Machine %d PAUSED", hashCode()));
+		FMLLog.info("Machine %d PAUSED", hashCode());
 	}
 	
 	@Override
 	protected void onMachineAssembled() {
-		System.out.println(String.format("Machine %d ASSEMBLED", hashCode()));
+		FMLLog.info("Machine %d ASSEMBLED", hashCode());
 	}
 	
 	@Override
 	protected void onMachineDisassembled() {
-		System.out.println(String.format("Machine %d DISASSEMBLED", hashCode()));
+		FMLLog.info("Machine %d DISASSEMBLED", hashCode());
 	}
 
 	@Override
 	protected void onMachineRestored() {
-		System.out.println(String.format("Machine %d RESTORED", hashCode()));
+		FMLLog.info("Machine %d RESTORED", hashCode());
 	}
 
 	@Override
@@ -107,5 +112,4 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	protected boolean isBlockGoodForInterior(World world, int x, int y, int z) {
 		return true;
 	}
-	
 }

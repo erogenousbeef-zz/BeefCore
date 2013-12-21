@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import cpw.mods.fml.common.FMLLog;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 
@@ -38,7 +39,7 @@ public class MultiblockRegistry {
 				throw new IllegalArgumentException("Mismatched world in world registry - this should not happen!");
 			}
 			
-			registry.tickStart(world);
+			registry.tickStart();
 		}
 	}
 	
@@ -53,7 +54,7 @@ public class MultiblockRegistry {
 				throw new IllegalArgumentException("Mismatched world in world registry - this should not happen!");
 			}
 			
-			registry.tickEnd(world);
+			registry.tickEnd();
 		}
 	}
 	
@@ -75,10 +76,23 @@ public class MultiblockRegistry {
 	 * @param chunkCoord The chunk at which this part is located.
 	 * @param part The part being loaded.
 	 */
-	public static void registerNewPart(World world, IMultiblockPart part) {
+	public static void onPartAdded(World world, IMultiblockPart part) {
 		MultiblockWorldRegistry registry = getOrCreateRegistry(world);
 		registry.onPartAdded(part);
 	}
+	
+	/**
+	 * Call to remove a part from world lists.
+	 * @param worldObj The world from which a multiblock part is being removed.
+	 * @param part The part being removed.
+	 */
+	public static void onPartRemovedFromWorld(World world, IMultiblockPart part) {
+		if(registries.containsKey(world)) {
+			registries.get(world).onPartRemovedFromWorld(part);
+		}
+		
+	}
+
 	
 	/**
 	 * Called whenever a world is unloaded. Unload the relevant registry, if we have one.
@@ -88,6 +102,37 @@ public class MultiblockRegistry {
 		if(registries.containsKey(world)) {
 			registries.get(world).onWorldUnloaded();
 			registries.remove(world);
+		}
+	}
+
+	/**
+	 * Call to mark a controller as dirty. Dirty means that parts have
+	 * been added or removed this tick.
+	 * @param world The world containing the multiblock
+	 * @param controller The dirty controller 
+	 */
+	public static void addDirtyController(World world,
+			MultiblockControllerBase controller) {
+		if(registries.containsKey(world)) {
+			registries.get(world).addDirtyController(controller);
+		}
+		else {
+			throw new IllegalArgumentException("Adding a dirty controller to a world that has no registered controllers!");
+		}
+	}
+	
+	/**
+	 * Call to mark a controller as dead. It should only be marked as dead
+	 * when it has no connected parts. It will be removed after the next world tick.
+	 * @param world The world formerly containing the multiblock
+	 * @param controller The dead controller
+	 */
+	public static void addDeadController(World world, MultiblockControllerBase controller) {
+		if(registries.containsKey(world)) {
+			registries.get(world).addDeadController(controller);
+		}
+		else {
+			FMLLog.warning("Controller %d in world %s marked as dead, but that world does not exist! Controller is being ignored.", controller.hashCode(), world);
 		}
 	}
 	
@@ -103,4 +148,5 @@ public class MultiblockRegistry {
 			return newRegistry;
 		}
 	}
+
 }

@@ -1,9 +1,11 @@
 package erogenousbeef.core.multiblock;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.network.PacketDispatcher;
@@ -18,6 +20,7 @@ import net.minecraft.network.packet.Packet132TileEntityData;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraftforge.common.MinecraftForge;
 
 /**
@@ -26,10 +29,7 @@ import net.minecraftforge.common.MinecraftForge;
  */
 public abstract class MultiblockTileEntityBase extends TileEntity implements IMultiblockPart {
 	private MultiblockControllerBase controller;
-	private byte visited;
-	private static final byte kUnvisited = 0;
-	private static final byte kVisited = 1;
-	
+	private boolean visited;
 	
 	private boolean saveMultiblockData;
 	private NBTTagCompound cachedMultiblockData;
@@ -38,77 +38,54 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public MultiblockTileEntityBase() {
 		super();
 		controller = null;
-		visited = kUnvisited;
+		visited = false;
 		saveMultiblockData = false;
 		paused = false;
 		cachedMultiblockData = null;
 	}
 
 	///// Multiblock Connection Base Logic
-	
-	/**
-	 * Remember to call super.onBlockAdded() if you derive from this! This performs important
-	 * checks to fuse multiple controllers that are now logically conjoined by the new block.
-	 * {@link erogenousbeef.core.multiblock.IMultiblockPart#onBlockAdded(net.minecraft.world.World, int, int, int)}
-	 */
 	@Override
-	public void onBlockAdded(World world, int x, int y, int z) {
+	public Set<MultiblockControllerBase> attachToNeighbors() {
+		Set<MultiblockControllerBase> controllers = null;
+		MultiblockControllerBase bestController = null;
+		
+		// Look for a compatible controller in our neighboring parts.
 		IMultiblockPart[] partsToCheck = getNeighboringParts();
-		
-		List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
-
-		// Check all adjacent loaded blocks for controllers. If they're all the same controller,
-		// attach via the "closest" one. Otherwise, attach to the closest one and then
-		// merge all controllers.
 		for(IMultiblockPart neighborPart : partsToCheck) {
-			if(neighborPart.isConnected() && !controllers.contains(neighborPart.getMultiblockController())) {
-				controllers.add(neighborPart.getMultiblockController());
-			}
-		} // End search for connection target
+			if(neighborPart.isConnected()) {
+				MultiblockControllerBase candidate = neighborPart.getMultiblockController();
+				if(!candidate.getClass().equals(this.getMultiblockControllerType())) {
+					// Skip multiblocks with incompatible types
+					continue;
+				}
+				
+				if(controllers == null) {
+					controllers = new HashSet<MultiblockControllerBase>();
+				}
 
-		
-		if(controllers.size() > 0) {
-			// Now find a connection target
-			MultiblockControllerBase targetController = null;
-			
-			// Find a target
-			for(MultiblockControllerBase candidateController : controllers) {
-				// TODO: Check if controllers are compatible
-				if(targetController == null) {
-					// Okay, welp
-					targetController = candidateController;
+				controllers.add(candidate);
+				if(bestController == null || candidate.shouldConsume(bestController)) {
+					bestController = candidate;
 				}
-				else {
-					int comparison = targetController.getReferenceCoord().compareTo(candidateController.getReferenceCoord());
-					if(comparison < 0) {
-						// Target controller has a better position
-						continue;
-					} else if(comparison == 0) {
-						throw new IllegalStateException(String.format("Found two controllers (hashes %d, %d) with identical reference coord %s", targetController.hashCode(), candidateController.hashCode(), targetController.getReferenceCoord().toString()));
-					}
-					else {
-						targetController = candidateController;
-					}
-				}
-			}
-			
-			assert(targetController != null);
-			
-			controllers.remove(targetController);
-			targetController.attachBlock(this);
-
-			if(controllers.size() > 0) {
-				// Oh shit it's merge time
-				CoordTriplet hostLoc = this.controller.getReferenceCoord();
-				this.controller.beginMerging();
-				for(MultiblockControllerBase controllerToMerge : controllers) {
-					this.controller.merge(controllerToMerge);
-				}
-				this.controller.endMerging();
 			}
 		}
-		else {
-			this.createNewMultiblock();
+		
+		// If we've located a valid neighboring controller, attach to it.
+		if(bestController != null) {
+			// attachBlock will call onAttached, which will set the controller.
+			this.controller = bestController;
+			bestController.attachBlock(this);
+		}
+
+		return controllers;
+	}
+
+	@Override
+	public void assertDetached() {
+		if(this.controller != null) {
+			FMLLog.info("[assert] Part @ (%d, %d, %d) should be detached already, but detected that it was not. This is not a fatal error, and will be repaired, but is unusual.", xCoord, yCoord, zCoord);
+			this.controller = null;
 		}
 	}
 	
@@ -136,7 +113,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		}
 	}
 		
-	/*
+	/**
 	 * Generally, TileEntities that are part of a multiblock should not subscribe to updates
 	 * from the main game loop. Instead, you should have lists of TileEntities which need to
 	 * be notified during an update() in your Controller and perform callbacks from there.
@@ -145,56 +122,33 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public boolean canUpdate() { return false; }
 	
-	/*
+	/**
 	 * Called when a block is removed.
 	 * @see net.minecraft.tileentity.TileEntity#invalidate()
 	 */
 	@Override
 	public void invalidate() {
 		super.invalidate();
-		
+		// TODO: Ensure this is always called AFTER onChunkUnload. Otherwise, restore the chunk-unload special handler.
+		FMLLog.fine("[DEBUG] invalidate called for multiblock part @ (%d, %d, %d)", xCoord, yCoord, zCoord);
 		detachSelf(false);
 	}
 	
-	// Called -immediately- when a chunk is unloaded.
-	// Quickly detach from the controller.
-	@Override
-	public void onChunkUnloaded() {
-		detachSelf(true);
-	}
-	
-	// Called from minecraft itself; only used on the client to detach when chunks are unloading
+	/**
+	 * Called from Minecraft's tile entity loop, after all tile entities have been ticked,
+	 * as the chunk in which this tile entity is contained is unloading.
+	 * Happens before the Forge TickEnd event.
+	 * 
+	 * @see net.minecraft.tileentity.TileEntity#onChunkUnload()
+	 */
 	@Override
 	public void onChunkUnload() {
 		super.onChunkUnload();
-		
-		// On the client, this can be relied upon, I hope.
-		if(this.worldObj.isRemote) {
-			detachSelf(true);
-		}
+		FMLLog.fine("[DEBUG] onChunkUnload called for multiblock part @ (%d, %d, %d)", xCoord, yCoord, zCoord);
+		detachSelf(true);
 	}
 
-	// This is actually called from a special hacked chunk-load event detector, because
-	// minecraft won't tell us this directly. :(
-	@Override
-	public void onChunkLoad() {
-		if(this.cachedMultiblockData != null) {
-			// We need to create a new multiblock BUT we cannot check the world yet.
-			// So we do something stupid and special.
-			MultiblockControllerBase newController = getNewMultiblockControllerObject();
-			newController.restore(this.cachedMultiblockData);
-			this.cachedMultiblockData = null;
-			newController.attachBlock(this); // This should grab any other connected blocks in the chunk
-		}
-		else {
-			if(!this.isConnected()) {
-				// Ignore blocks that are already connected
-				this.onBlockAdded(this.worldObj, xCoord, yCoord, zCoord);
-			}
-		}
-	}
-	
-	/*
+	/**
 	 * This is called when a block is being marked as valid by the chunk, but has not yet fully
 	 * been placed into the world's TileEntity cache. this.worldObj, xCoord, yCoord and zCoord have
 	 * been initialized, but any attempts to read data about the world can cause infinite loops -
@@ -208,17 +162,15 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void validate() {
 		super.validate();
 
-		// TODO: Make this work on both client and server
-		if(!this.worldObj.isRemote) {
-			MultiblockRegistry.registerNewPart(this.worldObj, this);
-		}
+		// TODO: Verify this works properly on both client and server
+		MultiblockRegistry.onPartAdded(this.worldObj, this);
 	}
-	
+
 	// Network Communication
 	@Override
 	public Packet getDescriptionPacket() {
 		NBTTagCompound packetData = new NBTTagCompound();
-		formatDescriptionPacket(packetData);
+		encodeDescriptionPacket(packetData);
 		return new Packet132TileEntityData(xCoord, yCoord, zCoord, 0, packetData);
 	}
 	
@@ -228,18 +180,20 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	}
 	
 	///// Things to override in most implementations (IMultiblockPart)
-
 	@Override
 	public void sendUpdatePacket() {
+		// TODO: REMOVEME
 		this.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
 	}
 	
-	/*
+	/**
 	 * Override this to easily modify the description packet's data without having
 	 * to worry about sending the packet itself.
+	 * Decode this data in decodeDescriptionPacket.
+	 * @param packetData An NBT compound tag into which you should write your custom description data.
+	 * @see erogenousbeef.core.multiblock.MultiblockTileEntityBase#decodeDescriptionPacket(NBTTagCompound)
 	 */
-	protected void formatDescriptionPacket(NBTTagCompound packetData) {
-		packetData.setByte("visited", this.visited);
+	protected void encodeDescriptionPacket(NBTTagCompound packetData) {
 		if(this.isMultiblockSaveDelegate()) {
 			NBTTagCompound tag = new NBTTagCompound();
 			getMultiblockController().formatDescriptionPacket(tag);
@@ -247,21 +201,13 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		}
 	}
 	
-	/*
+	/**
 	 * Override this to easily read in data from a TileEntity's description packet.
+	 * Encoded in encodeDescriptionPacket.
+	 * @param packetData The NBT data from the tile entity's description packet.
+	 * @see erogenousbeef.core.multiblock.MultiblockTileEntityBase#encodeDescriptionPacket(NBTTagCompound)
 	 */
 	protected void decodeDescriptionPacket(NBTTagCompound packetData) {
-		if(packetData.hasKey("visited")) {
-			this.visited = packetData.getByte("visited");
-		}
-		else {
-			this.setUnvisited();
-		}
-
-		if(this.worldObj.isRemote) {
-			clientCheckForMerges();
-		}
-		
 		if(packetData.hasKey("multiblockData")) {
 			NBTTagCompound tag = packetData.getCompoundTag("multiblockData");
 			if(isConnected()) {
@@ -282,9 +228,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		}
 	}
 
-	@Override
-	public abstract MultiblockControllerBase getNewMultiblockControllerObject();
-	
 	///// Validation Helpers (IMultiblockPart)
 	
 	@Override
@@ -348,21 +291,21 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 	@Override
 	public void setUnvisited() {
-		this.visited = kUnvisited;
+		this.visited = false;
 	}
 	
 	@Override
 	public void setVisited() {
-		this.visited = kVisited;
+		this.visited = true;
 	}
 	
 	@Override
 	public boolean isVisited() {
-		return this.visited != kUnvisited;
+		return this.visited;
 	}
 
 	@Override
-	public void onMergedIntoOtherMultiblock(MultiblockControllerBase newController) {
+	public void onAssimilated(MultiblockControllerBase newController) {
 		assert(this.controller != newController);
 		this.controller = newController;
 	}
@@ -374,23 +317,12 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	
 	@Override
 	public void onDetached(MultiblockControllerBase oldController) {
-		if(this.controller == null) {
-			FMLLog.info("Multiblock Part @ (%d,  %d, %d) is detaching, but current controller is already null. This should be harmless, but it's weird.", xCoord, yCoord, zCoord);
-			return;
-		}
-		else if(this.controller != oldController) {
-			throw new IllegalArgumentException("Detaching from wrong controller, old @ " + oldController.hashCode() + " current @ " + this.controller.hashCode());
-		}
-
 		this.controller = null;
 	}
 
 	@Override
-	public void createNewMultiblock() {
-		MultiblockControllerBase newController = getNewMultiblockControllerObject();
-		newController.attachBlock(this);
-	}
-
+	public abstract MultiblockControllerBase createNewMultiblock();
+	
 	@Override
 	public IMultiblockPart[] getNeighboringParts() {
 		CoordTriplet[] neighbors = new CoordTriplet[] {
@@ -404,8 +336,9 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 		TileEntity te;
 		List<IMultiblockPart> neighborParts = new ArrayList<IMultiblockPart>();
+		IChunkProvider chunkProvider = worldObj.getChunkProvider();
 		for(CoordTriplet neighbor : neighbors) {
-			if(!this.worldObj.getChunkProvider().chunkExists(neighbor.x >> 4, neighbor.z >> 4)) {
+			if(!chunkProvider.chunkExists(neighbor.getChunkX(), neighbor.getChunkZ())) {
 				// Chunk not loaded, skip it.
 				continue;
 			}
@@ -418,151 +351,21 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		IMultiblockPart[] tmp = new IMultiblockPart[neighborParts.size()];
 		return neighborParts.toArray(tmp);
 	}
-	
-	@Override
-	public void onOrphaned() {
-		if(this.isConnected()) {
-			// Wait, we're not REALLY an orphan.
-			throw new IllegalStateException("Orphaning a non-orphaned block!");
-		}
-		
-		createNewMultiblock();
-
-		// Now for fun. Add all neighbors and DFS out into the world.
-		Queue<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
-
-		// Add all unconnected neighbors in loaded chunks
-		IMultiblockPart[] neighborParts = getNeighboringParts();
-		for(IMultiblockPart neighborPart : neighborParts) {
-			if(!neighborPart.isConnected()) {
-				partsToCheck.add(neighborPart);
-			}
-		}
-
-		IMultiblockPart part;
-		while(!partsToCheck.isEmpty()) {
-			part = partsToCheck.remove();
-			if(part.isConnected()) {
-				// Ignore connected parts that aren't us
-				continue;
-			}
-			
-			// We're already connected by virtue of the new controller
-			this.controller.attachBlock(part);
-			
-			// Add all unconnected neighbors of this part
-			neighborParts = part.getNeighboringParts();
-			for(IMultiblockPart neighbor : neighborParts) {
-				if(!neighbor.isConnected()) {
-					partsToCheck.add(neighbor);
-				}
-			}
-		}
-	}
 
 	///// Private/Protected Logic Helpers
-
-	/*
-	 * Attaches this block to the specified controller. Assigns the controller
-	 * member and calls attachBlock on the controller.
-	 */
-	protected void attachSelf(World world, MultiblockControllerBase newController) {
-		// holy shit we're good to go
-		this.controller = newController;
-		this.controller.attachBlock(this);
-	}
-	
 	/*
 	 * Detaches this block from its controller. Calls detachBlock() and clears the controller member.
 	 */
 	protected void detachSelf(boolean chunkUnloading) {
 		if(this.controller != null) {
+			// Clean part out of controller
 			this.controller.detachBlock(this, chunkUnloading);
+
+			// The above should call onDetached, but, just in case...
 			this.controller = null;
-		}
-	}
-	
-	/*
-	 * Special client-only remerge code, cribbed from onBlockAdded
-	 */
-	protected void clientCheckForMerges() {
-		IMultiblockPart[] partsToCheck = getNeighboringParts();
-		
-		List<MultiblockControllerBase> controllers = new LinkedList<MultiblockControllerBase>();
-		
-		if(this.controller != null) {
-			controllers.add(this.controller);
-		}
 
-		// Check all adjacent loaded blocks for controllers. If they're all the same controller,
-		// attach via the "closest" one. Otherwise, attach to the closest one and then
-		// merge all controllers.
-		for(IMultiblockPart neighborPart : partsToCheck) {
-			if(neighborPart.isConnected() && !controllers.contains(neighborPart.getMultiblockController())) {
-				controllers.add(neighborPart.getMultiblockController());
-			}
-		} // End search for connection target
-
-
-		if(controllers.size() == 1 && controllers.get(0) == this.controller) {
-			// We're cool. The only thing to connect was ourself.
-			return;
-		}
-		
-		if(controllers.size() > 0) {
-
-			// Now find a connection target
-			MultiblockControllerBase targetController = null;
-			
-			// Find a target
-			for(MultiblockControllerBase candidateController : controllers) {
-				// TODO: Check if controllers are compatible
-				if(targetController == null) {
-					// Okay, welp
-					targetController = candidateController;
-				}
-				else {
-					int comparison = targetController.getReferenceCoord().compareTo(candidateController.getReferenceCoord());
-					if(comparison < 0) {
-						// Target controller has a better position
-						continue;
-					} else if(comparison == 0) {
-						throw new IllegalStateException(String.format("Found two controllers (hashes %d, %d) with identical reference coord %s", targetController.hashCode(), candidateController.hashCode(), targetController.getReferenceCoord().toString()));
-					}
-					else {
-						targetController = candidateController;
-					}
-				}
-			}
-			
-			
-			assert(targetController != null);
-			
-			controllers.remove(targetController);
-			
-			if(targetController != this.controller) {
-				// Remove ourself. Mark as a chunk operation because we're going to merge it anyway
-				if(this.controller != null) {
-					this.controller.detachBlock(this, true);
-				}
-				targetController.attachBlock(this);
-			}
-
-			if(controllers.size() > 0) {
-				// Oh shit it's merge time
-				CoordTriplet hostLoc = this.controller.getReferenceCoord();
-				this.controller.beginMerging();
-				for(MultiblockControllerBase controllerToMerge : controllers) {
-					if(!controllerToMerge.isEmpty()) {
-						this.controller.merge(controllerToMerge);
-					}
-				}
-				this.controller.endMerging();
-			}
-		}
-		else {
-			// We are truly alone. New multiblock!
-			this.onOrphaned();
+			// Clean part out of lists in the registry
+			MultiblockRegistry.onPartRemovedFromWorld(worldObj, this);
 		}
 	}
 }
