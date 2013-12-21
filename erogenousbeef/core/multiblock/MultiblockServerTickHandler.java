@@ -22,12 +22,16 @@ public class MultiblockServerTickHandler implements IScheduledTickHandler {
 	public void tickStart(EnumSet<TickType> type, Object... tickData) {
 		if(type.contains(TickType.WORLD)) {
 			World world = (World)tickData[0];
-			MultiblockRegistry.tick(world);
+			MultiblockRegistry.tickStart(world);
 		}
 	}
 
 	@Override
 	public void tickEnd(EnumSet<TickType> type, Object... tickData) {
+		if(type.contains(TickType.WORLD)) {
+			World world = (World)tickData[0];
+			MultiblockRegistry.tickEnd(world);
+		}
 	}
 
 	@Override

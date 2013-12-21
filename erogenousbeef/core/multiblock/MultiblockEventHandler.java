@@ -18,15 +18,7 @@ public class MultiblockEventHandler {
 		Chunk chunk = loadEvent.getChunk();
 		World world = loadEvent.world;
 		if(world.isRemote) { return; } // Ignore client chunk load events, which come in for SSP
-		MultiblockRegistry.onChunkLoaded(world, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
-	}
-	
-	@ForgeSubscribe(priority = EventPriority.NORMAL)
-	public void onChunkUnload(ChunkEvent.Unload unloadEvent) {
-		Chunk chunk = unloadEvent.getChunk();
-		World world = unloadEvent.world;
-		if(world.isRemote) { return; }
-		MultiblockRegistry.onChunkUnloaded(world, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
+		MultiblockRegistry.onChunkLoaded(world, chunk.xPosition, chunk.zPosition);
 	}
 	
 	@ForgeSubscribe(priority = EventPriority.NORMAL)

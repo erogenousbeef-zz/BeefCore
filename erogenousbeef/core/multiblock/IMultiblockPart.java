@@ -1,5 +1,7 @@
 package erogenousbeef.core.multiblock;
 
+import java.util.Set;
+
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.world.World;
@@ -220,4 +222,13 @@ public interface IMultiblockPart {
 	 * @return The World object associated with this TileEntity
 	 */
 	public World getWorldObj();
+
+	/**
+	 * Called when this part should check its neighbors.
+	 * This method MUST NOT cause additional chunks to load.
+	 * ALWAYS check to see if a chunk is loaded before querying for its tile entity
+	 * This part should inform the controller that it is attaching at this time.
+	 * @return A Set of multiblock controllers to which this object would like to attach. It should have attached to one of the controllers in this list. Return null if there are no compatible controllers nearby. 
+	 */
+	public Set<MultiblockControllerBase> attachToNeighbors();
 }

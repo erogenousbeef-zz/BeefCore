@@ -1,5 +1,6 @@
 package erogenousbeef.core.common;
 
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraftforge.common.ForgeDirection;
 
 /*
@@ -13,6 +14,10 @@ public class CoordTriplet implements Comparable {
 		this.y = y;
 		this.z = z;
 	}
+	
+	public int getChunkX() { return x << 4; }
+	public int getChunkZ() { return z << 4; }
+	public long getChunkXZHash() { return ChunkCoordIntPair.chunkXZ2Int(x >> 4, z >> 4); }
 	
 	@Override
 	public boolean equals(Object other) {

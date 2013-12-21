@@ -206,14 +206,10 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void validate() {
 		super.validate();
-		
+
+		// TODO: Make this work on both client and server
 		if(!this.worldObj.isRemote) {
-			MultiblockRegistry.registerPart(this.worldObj, ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this);
-			
-			if(!this.worldObj.getChunkProvider().chunkExists(xCoord >> 4, zCoord >> 4)) {
-				boolean priority = this.cachedMultiblockData != null;
-				MultiblockRegistry.onPartLoaded(this.worldObj, ChunkCoordIntPair.chunkXZ2Int(xCoord >> 4, zCoord >> 4), this, priority);
-			}
+			MultiblockRegistry.registerNewPart(this.worldObj, this);
 		}
 	}
 	
