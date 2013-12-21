@@ -17,7 +17,6 @@ public class MultiblockEventHandler {
 	public void onChunkLoad(ChunkEvent.Load loadEvent) {
 		Chunk chunk = loadEvent.getChunk();
 		World world = loadEvent.world;
-		if(world.isRemote) { return; } // Ignore client chunk load events, which come in for SSP
 		MultiblockRegistry.onChunkLoaded(world, chunk.xPosition, chunk.zPosition);
 	}
 	

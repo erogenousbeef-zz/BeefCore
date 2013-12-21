@@ -100,6 +100,7 @@ public class MultiblockWorldRegistry {
 		// TODO: This is not thread-safe. Wrap this in a mutex.
 		// Merge pools - sets of adjacent machines which should be merged later on in processing
 		if(orphanedParts.size() > 0) {
+			FMLLog.info("World registry processing %d orphans", orphanedParts.size());
 			Set<MultiblockControllerBase> compatibleControllers;
 			List<Set<MultiblockControllerBase>> mergePools = new ArrayList<Set<MultiblockControllerBase>>();
 			
@@ -261,11 +262,13 @@ public class MultiblockWorldRegistry {
 				partSet = partsAwaitingChunkLoad.get(chunkHash);
 			}
 			
+			FMLLog.info("[%s] Adding new part @ %s to chunkload list for chunk %d, %d", clientOrServer(), worldLocation, worldLocation.getChunkX(), worldLocation.getChunkZ());
 			partSet.add(part);
 		}
 		else {
 			// Part goes into the orphan queue, to be checked this tick
 			orphanedParts.add(part);
+			FMLLog.info("[%s] Adding new part @ %s to orphan list, which is now size %d", clientOrServer(), worldLocation, orphanedParts.size());
 		}
 	}
 	
@@ -342,5 +345,9 @@ public class MultiblockWorldRegistry {
 	 */
 	public void addDirtyController(MultiblockControllerBase dirtyController) {
 		this.dirtyControllers.add(dirtyController);
+	}
+	
+	private String clientOrServer() {
+		return worldObj.isRemote ? "CLIENT":"SERVER";
 	}
 }
