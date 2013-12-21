@@ -415,7 +415,7 @@ public abstract class MultiblockControllerBase {
 		for(CoordTriplet coord : connectedBlocks) {
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
 			if(te instanceof IMultiblockPart) {
-				((IMultiblockPart)te).onMachineAssembled();
+				((IMultiblockPart)te).onMachineAssembled(this);
 			}
 		}
 		

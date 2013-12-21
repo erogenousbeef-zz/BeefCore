@@ -132,10 +132,11 @@ public interface IMultiblockPart {
 	 * logic in your tile entities.
 	 * Note that, for non-square machines, the min/max coordinates may not actually be part
 	 * of the machine! They form an outer bounding box for the whole machine itself.
+	 * @param multiblockControllerBase The controller to which this part is being assembled.
 	 * @param machineMinCoords The minimum x,y,z coordinates present in the machine.
 	 * @param machineMaxCoords the maximum x,y,z coordinates present in the machine.
 	 */
-	public void onMachineAssembled();
+	public void onMachineAssembled(MultiblockControllerBase multiblockControllerBase);
 	
 	/**
 	 * Called when the machine is broken, generally due to the removal of a block.

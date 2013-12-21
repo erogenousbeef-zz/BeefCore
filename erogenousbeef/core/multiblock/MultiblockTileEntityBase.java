@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.network.PacketDispatcher;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -304,7 +305,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	///// Game logic callbacks (IMultiblockPart)
 	
 	@Override
-	public abstract void onMachineAssembled();
+	public abstract void onMachineAssembled(MultiblockControllerBase multiblockControllerBase);
 
 	@Override
 	public abstract void onMachineBroken();
@@ -374,7 +375,8 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void onDetached(MultiblockControllerBase oldController) {
 		if(this.controller == null) {
-			throw new IllegalArgumentException("Detaching but the current controller is already null!");
+			FMLLog.info("Multiblock Part @ (%d,  %d, %d) is detaching, but current controller is already null. This should be harmless, but it's weird.", xCoord, yCoord, zCoord);
+			return;
 		}
 		else if(this.controller != oldController) {
 			throw new IllegalArgumentException("Detaching from wrong controller, old @ " + oldController.hashCode() + " current @ " + this.controller.hashCode());
