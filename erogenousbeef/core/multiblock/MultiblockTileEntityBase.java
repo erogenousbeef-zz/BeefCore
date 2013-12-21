@@ -308,7 +308,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	///// Game logic callbacks (IMultiblockPart)
 	
 	@Override
-	public abstract void onMachineAssembled();
+	public abstract void onMachineAssembled(MultiblockControllerBase multiblockControllerBase);
 
 	@Override
 	public abstract void onMachineBroken();
