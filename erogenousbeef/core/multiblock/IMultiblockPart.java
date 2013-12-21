@@ -49,10 +49,10 @@ public interface IMultiblockPart {
 	
 	// Multiblock fuse/split helper methods. Here there be dragons.
 	/**
-	 * Creates a new Multiblock Controller and attaches this tile entity to it.
-	 * Generally, you should not override this method.
+	 * Create a new Multiblock Controller of the type appropriate for this part.
+	 * The part should NOT attach itself to the controller
 	 */
-	public void createNewMultiblock();
+	public MultiblockControllerBase createNewMultiblock();
 	
 	/**
 	 * Factory method. Creates a new multiblock controller and returns it.
