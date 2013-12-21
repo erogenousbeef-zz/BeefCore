@@ -90,7 +90,7 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 	}
 
 	@Override
-	public void onMachineAssembled() { }
+	public void onMachineAssembled(MultiblockControllerBase controller) { }
 
 	@Override
 	public void onMachineBroken() { }
