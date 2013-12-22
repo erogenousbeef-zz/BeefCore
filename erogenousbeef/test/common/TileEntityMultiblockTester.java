@@ -109,4 +109,9 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 		return TestMultiblockController.class;
 	}
 
+	@Override
+	public void onOrphaned(MultiblockControllerBase oldController,
+			int oldControllerSize, int newControllerSize) {
+	}
+
 }

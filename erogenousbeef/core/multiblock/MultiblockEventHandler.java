@@ -8,9 +8,10 @@ import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.event.world.WorldEvent;
 
 /**
- * In your mod, subscribe this on the server side to handle chunk load events
- * for your multiblock machines. This will guarantee that they can appropriately
- * handle being added to a world by the system instead of just by players.
+ * In your mod, subscribe this on both the client and server sides side to handle chunk
+ * load events for your multiblock machines.
+ * Chunks can load asynchronously in environments like MCPC+, so we cannot
+ * process any blocks that are in chunks which are still loading.
  */
 public class MultiblockEventHandler {
 	@ForgeSubscribe(priority = EventPriority.NORMAL)
@@ -19,7 +20,8 @@ public class MultiblockEventHandler {
 		World world = loadEvent.world;
 		MultiblockRegistry.onChunkLoaded(world, chunk.xPosition, chunk.zPosition);
 	}
-	
+
+	// Cleanup, for nice memory usageness
 	@ForgeSubscribe(priority = EventPriority.NORMAL)
 	public void onWorldUnload(WorldEvent.Unload unloadWorldEvent) {
 		MultiblockRegistry.onWorldUnloaded(unloadWorldEvent.world);

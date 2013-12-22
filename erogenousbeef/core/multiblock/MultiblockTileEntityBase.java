@@ -62,12 +62,13 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 				
 				if(controllers == null) {
 					controllers = new HashSet<MultiblockControllerBase>();
+					bestController = candidate;
+				}
+				else if(!controllers.contains(candidate) && candidate.shouldConsume(bestController)) {
+					bestController = candidate;
 				}
 
 				controllers.add(candidate);
-				if(bestController == null || candidate.shouldConsume(bestController)) {
-					bestController = candidate;
-				}
 			}
 		}
 		
@@ -123,14 +124,13 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public boolean canUpdate() { return false; }
 	
 	/**
-	 * Called when a block is removed.
+	 * Called when a block is removed by game actions, such as a player breaking the block
+	 * or the block being changed into another block.
 	 * @see net.minecraft.tileentity.TileEntity#invalidate()
 	 */
 	@Override
 	public void invalidate() {
 		super.invalidate();
-		// TODO: Ensure this is always called AFTER onChunkUnload. Otherwise, restore the chunk-unload special handler.
-		FMLLog.fine("[DEBUG] invalidate called for multiblock part @ (%d, %d, %d)", xCoord, yCoord, zCoord);
 		detachSelf(false);
 	}
 	
@@ -138,13 +138,11 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 * Called from Minecraft's tile entity loop, after all tile entities have been ticked,
 	 * as the chunk in which this tile entity is contained is unloading.
 	 * Happens before the Forge TickEnd event.
-	 * 
 	 * @see net.minecraft.tileentity.TileEntity#onChunkUnload()
 	 */
 	@Override
 	public void onChunkUnload() {
 		super.onChunkUnload();
-		FMLLog.fine("[DEBUG] onChunkUnload called for multiblock part @ (%d, %d, %d)", xCoord, yCoord, zCoord);
 		detachSelf(true);
 	}
 
@@ -161,8 +159,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void validate() {
 		super.validate();
-
-		// TODO: Verify this works properly on both client and server
 		MultiblockRegistry.onPartAdded(this.worldObj, this);
 	}
 
@@ -182,7 +178,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	///// Things to override in most implementations (IMultiblockPart)
 	@Override
 	public void sendUpdatePacket() {
-		// TODO: REMOVEME
+		// TODO: REMOVEME?
 		this.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
 	}
 	
@@ -212,18 +208,29 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 			NBTTagCompound tag = packetData.getCompoundTag("multiblockData");
 			if(isConnected()) {
 				getMultiblockController().decodeDescriptionPacket(tag);
-
-				// TODO: This should always be true...
-				if(this.worldObj.isRemote) {
-					getMultiblockController().onClientLoadedDescriptionDataFromServer();
-				}
 			}
 			else {
+				// This part hasn't been added to a machine yet, so cache the data.
 				this.cachedMultiblockData = tag;
 			}
 		}
 	}
 
+	@Override
+	public boolean hasMultiblockSaveData() {
+		return this.cachedMultiblockData != null;
+	}
+	
+	@Override
+	public NBTTagCompound getMultiblockSaveData() {
+		return this.cachedMultiblockData;
+	}
+	
+	@Override
+	public void onMultiblockDataAssimilated() {
+		this.cachedMultiblockData = null;
+	}
+	
 	///// Validation Helpers (IMultiblockPart)
 	
 	@Override

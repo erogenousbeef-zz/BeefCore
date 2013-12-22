@@ -4,6 +4,7 @@ import java.util.Set;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import erogenousbeef.core.common.CoordTriplet;
 
@@ -46,6 +47,17 @@ public interface IMultiblockPart {
 	 * @param multiblockController The multiblock controller that no longer controls this tile entity.
 	 */
 	public void onDetached(MultiblockControllerBase multiblockController);
+	
+	/**
+	 * Called when this block is being orphaned. Use this to copy game-data values that
+	 * should persist despite a machine being broken.
+	 * This should NOT mark the part as disconnected. onDetached will be called immediately afterwards.
+	 * @see #onDetached(MultiblockControllerBase)
+	 * @param oldController The controller which is orphaning this block. 
+	 * @param oldControllerSize The number of connected blocks in the controller prior to shedding orphans.
+	 * @param newControllerSize The number of connected blocks in the controller after shedding orphans.
+	 */
+	public void onOrphaned(MultiblockControllerBase oldController, int oldControllerSize, int newControllerSize);
 	
 	// Multiblock fuse/split helper methods. Here there be dragons.
 	/**
@@ -210,4 +222,20 @@ public interface IMultiblockPart {
 	 * such as chunk unloads.
 	 */
 	public void onMachinePaused();
+
+	/**
+	 * @return True if a part has multiblock game-data saved inside it.
+	 */
+	public boolean hasMultiblockSaveData();
+	
+	/**
+	 * @return The part's saved multiblock game-data in NBT format, or null if there isn't any.
+	 */
+	public NBTTagCompound getMultiblockSaveData();
+
+	/**
+	 * Called after a block is added and the controller has incorporated the part's saved
+	 * multiblock game-data into itself. Generally, you should clear the saved data here.
+	 */
+	void onMultiblockDataAssimilated();
 }

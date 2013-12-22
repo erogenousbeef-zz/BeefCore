@@ -19,8 +19,8 @@ import net.minecraft.world.chunk.IChunkProvider;
 import erogenousbeef.core.common.CoordTriplet;
 
 /**
- * This class contains the base logic for "multiblock controllers". You can think of them
- * as meta-TileEntities. They govern the logic for an associated group of TileEntities.
+ * This class contains the base logic for "multiblock controllers". Conceptually, they are
+ * meta-TileEntities. They govern the logic for an associated group of TileEntities.
  * 
  * Subordinate TileEntities implement the IMultiblockPart class and, generally, should not have an update() loop.
  */
@@ -76,12 +76,10 @@ public abstract class MultiblockControllerBase {
 
 	/**
 	 * Call when a block with cached save-delegate data is added to the multiblock.
-	 * @param savedData The NBT tag containing this controller's data.
+	 * The part will be notified that the data has been used after this call completes.
+	 * @param part The NBT tag containing this controller's data.
 	 */
-	public void restore(NBTTagCompound savedData) {
-		// TODO: CHECK USAGES
-		this.readFromNBT(savedData);
-	}
+	public abstract void onAttachedPartWithMultiblockData(IMultiblockPart part, NBTTagCompound data);
 	
 	/**
 	 * Check if a block is being tracked by this machine.
@@ -102,13 +100,18 @@ public abstract class MultiblockControllerBase {
 
 		// No need to re-add a block
 		if(connectedBlocks.contains(coord)) {
-			// TODO: Is this actually necessary?
-			throw new IllegalArgumentException("Double-adding a block @ " + coord.toString() + "; this is not valid, please report to github.com/erogenousbeef/BigReactors");
+			FMLLog.warning("[%s] Controller %s is double-adding a block @ %s. This is unusual. If you encounter odd behavior, please tear down the machine and rebuild it.", (worldObj.isRemote?"CLIENT":"SERVER"), hashCode(), coord);
 		}
 
 		connectedBlocks.add(coord);
 		part.onAttached(this);
 		this.onBlockAdded(part);
+		
+		if(part.hasMultiblockSaveData()) {
+			NBTTagCompound savedData = part.getMultiblockSaveData();
+			onAttachedPartWithMultiblockData(part, savedData);
+			part.onMultiblockDataAssimilated();
+		}
 		
 		// TODO: Necessary?
 		this.worldObj.markBlockForUpdate(coord.x, coord.y, coord.z);
@@ -521,8 +524,8 @@ public abstract class MultiblockControllerBase {
 	 * @see erogenousbeef.core.multiblock.MultiblockControllerBase#update()
 	 */
 	public final void updateMultiblockEntity() {
-		if(this.connectedBlocks.isEmpty()) {
-			// This shouldn't happen...
+		if(connectedBlocks.isEmpty()) {
+			// This shouldn't happen, but just in case...
 			MultiblockRegistry.addDeadController(this.worldObj, this);
 			return;
 		}
@@ -532,37 +535,44 @@ public abstract class MultiblockControllerBase {
 			return;
 		}
 
-		if(!update()) {
-			// We are being instructed not to save the chunks - game data did not change.
-			// So just stop.
-			return;
+		if(worldObj.isRemote) {
+			clientUpdate();
 		}
-
-		// If our chunks are all loaded, then save them, because we've changed stuff.
-		if(this.worldObj.checkChunksExist(minimumCoord.x, minimumCoord.y, minimumCoord.z, maximumCoord.x, maximumCoord.y, maximumCoord.z)) {
-			int minChunkX = minimumCoord.x >> 4;
-			int minChunkZ = minimumCoord.z >> 4;
-			int maxChunkX = maximumCoord.x >> 4;
-			int maxChunkZ = maximumCoord.z >> 4;
-			
-			for(int x = minChunkX; x <= maxChunkX; x++) {
-				for(int z = minChunkZ; z <= maxChunkZ; z++) {
-					// Ensure that we save our data, even if the our save delegate is in has no TEs.
-					Chunk chunkToSave = this.worldObj.getChunkFromChunkCoords(x, z);
-					chunkToSave.setChunkModified();
+		else if(serverUpdate()) {
+			// If this returns true, the server has changed its internal data. 
+			// If our chunks are loaded (they should be), we must mark our chunks as dirty.
+			if(this.worldObj.checkChunksExist(minimumCoord.x, minimumCoord.y, minimumCoord.z, maximumCoord.x, maximumCoord.y, maximumCoord.z)) {
+				int minChunkX = minimumCoord.x >> 4;
+				int minChunkZ = minimumCoord.z >> 4;
+				int maxChunkX = maximumCoord.x >> 4;
+				int maxChunkZ = maximumCoord.z >> 4;
+				
+				for(int x = minChunkX; x <= maxChunkX; x++) {
+					for(int z = minChunkZ; z <= maxChunkZ; z++) {
+						// Ensure that we save our data, even if the our save delegate is in has no TEs.
+						Chunk chunkToSave = this.worldObj.getChunkFromChunkCoords(x, z);
+						chunkToSave.setChunkModified();
+					}
 				}
 			}
 		}
+		// Else: Server, but no need to save data.
 	}
 	
 	/**
-	 * The update loop! Use this similarly to a TileEntity's update loop.
+	 * The server-side update loop! Use this similarly to a TileEntity's update loop.
 	 * You do not need to call your superclass' update() if you're directly
 	 * derived from MultiblockControllerBase. This is a callback.
 	 * Note that this will only be called when the machine is assembled.
 	 * @return True if the multiblock should save data, i.e. its internal game state has changed. False otherwise.
 	 */
-	protected abstract boolean update();
+	protected abstract boolean serverUpdate();
+	
+	/**
+	 * Client-side update loop. Generally, this shouldn't do anything, but if you want
+	 * to do some interpolation or something, do it here.
+	 */
+	protected abstract void clientUpdate();
 	
 	// Validation helpers
 	/**
@@ -680,15 +690,6 @@ public abstract class MultiblockControllerBase {
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
 
 	/**
-	 * Called when a client loads data from the server.
-	 * Use this for weird client-side setup side cases.
-	 */
-	public void onClientLoadedDescriptionDataFromServer() {
-		// TODO: REMOVEME?
-		this.recalculateMinMaxCoords();
-	}
-	
-	/**
 	 * @return True if this controller has no associated blocks, false otherwise
 	 */
 	public boolean isEmpty() {
@@ -707,6 +708,8 @@ public abstract class MultiblockControllerBase {
 			throw new IllegalArgumentException("Attempting to merge two multiblocks with different master classes - this should never happen!");
 		}
 		
+		if(otherController == this) { return false; } // Don't be silly, don't eat yourself.
+		
 		CoordTriplet myCoord = getReferenceCoord();
 		CoordTriplet theirCoord = otherController.getReferenceCoord();
 		
@@ -714,7 +717,9 @@ public abstract class MultiblockControllerBase {
 		if(res < 0) { return true; }
 		else if(res > 0) { return false; }
 		else {
-			throw new IllegalArgumentException("Two controllers with the same reference coord - this should never happen!"); 
+			FMLLog.severe("My Controller (%d): size (%d), coords: %s", hashCode(), connectedBlocks.size(), java.util.Arrays.toString(connectedBlocks.toArray()));
+			FMLLog.severe("Other Controller (%d): size (%d), coords: %s", otherController.hashCode(), otherController.connectedBlocks.size(), java.util.Arrays.toString(otherController.connectedBlocks.toArray()));
+			throw new IllegalArgumentException("[" + (worldObj.isRemote?"CLIENT":"SERVER") + "] Two controllers with the same reference coord - this should never happen!"); 
 		}
 	}
 
@@ -743,6 +748,10 @@ public abstract class MultiblockControllerBase {
 		
 		// Reset visitations and find the minimum coordinate
 		Set<CoordTriplet> deadCoords = new HashSet<CoordTriplet>();
+		IMultiblockPart part = null;
+		
+		int originalSize = connectedBlocks.size();
+
 		for(CoordTriplet c: connectedBlocks) {
 			// This happens during chunk unload.
 			if(!chunkProvider.chunkExists(c.x >> 4, c.z >> 4)) {
@@ -757,7 +766,8 @@ public abstract class MultiblockControllerBase {
 				continue;
 			}
 			
-			((IMultiblockPart)te).setUnvisited();
+			part = (IMultiblockPart)te;
+			part.setUnvisited();
 			
 			if(referenceCoord == null) {
 				referenceCoord = c;
@@ -771,21 +781,24 @@ public abstract class MultiblockControllerBase {
 		deadCoords.clear();
 		
 		if(referenceCoord == null || isEmpty()) {
-			// There are no valid parts remaining. This is due to a chunk unload. Halt.
+			// There are no valid parts remaining. The entire multiblock was unloaded during a chunk unload. Halt.
 			return null;
 		}
 		
-		// Now visit all connected parts, breadth-first, starting from reference coord.
+		IMultiblockPart referencePart = (IMultiblockPart)worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+		
+		// Now visit all connected parts, breadth-first, starting from reference coord's part
 		LinkedList<IMultiblockPart> partsToCheck = new LinkedList<IMultiblockPart>();
 		IMultiblockPart[] nearbyParts = null;
-		IMultiblockPart part = (IMultiblockPart)this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
-
-		partsToCheck.add(part);
+		partsToCheck.add(referencePart);
+		int visitedParts = 0;
+		
 		while(!partsToCheck.isEmpty()) {
 			part = partsToCheck.removeFirst();
 			part.setVisited();
+			visitedParts++;
 
-			nearbyParts = part.getNeighboringParts();
+			nearbyParts = part.getNeighboringParts(); // Chunk-safe
 			for(IMultiblockPart nearbyPart : nearbyParts) {
 				// Ignore different machines
 				if(nearbyPart.getMultiblockController() != this) {
@@ -801,22 +814,29 @@ public abstract class MultiblockControllerBase {
 		
 		// Finally, remove all parts that remain disconnected.
 		Set<IMultiblockPart> removedParts = new HashSet<IMultiblockPart>();
+		IMultiblockPart orphanCandidate;
 		
 		for(CoordTriplet c : connectedBlocks) {
-			part = (IMultiblockPart)this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
-			if(part == null) {
-				// Should never happen, but chunks are weird.
+			te = worldObj.getBlockTileEntity(c.x, c.y, c.z);
+			if(!(te instanceof IMultiblockPart)) {
+				// Weird chunk problems?
 				deadCoords.add(c);
+				continue;
 			}
-			else if (!part.isVisited()) {
+			
+			orphanCandidate = (IMultiblockPart)te;
+			if (!orphanCandidate.isVisited()) {
 				deadCoords.add(c);
-				part.onDetached(this); // Force the part to disconnect
-				removedParts.add(part);
+				orphanCandidate.onOrphaned(this, originalSize, visitedParts);
+				orphanCandidate.onDetached(this); // Force the part to disconnect
+				removedParts.add(orphanCandidate);
 			}
 		}
 
 		// Trim any blocks that were invalid, or were removed.
 		this.connectedBlocks.removeAll(deadCoords);
+		
+		// Cleanup. Not necessary, really.
 		deadCoords.clear();
 		
 		return removedParts;

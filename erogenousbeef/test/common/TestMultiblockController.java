@@ -89,8 +89,12 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	}
 
 	@Override
-	protected boolean update() {
+	protected boolean serverUpdate() {
 		return false;
+	}
+	
+	@Override
+	protected void clientUpdate() {
 	}
 
 	@Override
@@ -111,5 +115,12 @@ public class TestMultiblockController extends MultiblockControllerBase {
 	@Override
 	protected boolean isBlockGoodForInterior(World world, int x, int y, int z) {
 		return true;
+	}
+
+	@Override
+	public void onAttachedPartWithMultiblockData(IMultiblockPart part,
+			NBTTagCompound data) {
+		FMLLog.info("[%s] Controller %d assimilating save data from part @ %s", (worldObj.isRemote ? "CLIENT" : "SERVER"), ordinal, part.getWorldLocation());
+		decodeDescriptionPacket(data);
 	}
 }

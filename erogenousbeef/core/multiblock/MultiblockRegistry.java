@@ -15,19 +15,14 @@ import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 
 /**
- * This is a very simple static singleton registry class, used to send ticks to active multiblocks.
- * Register when your multiblock is created and unregister it when it loses its last connected block.
+ * This is a very static singleton registry class which directs incoming events to sub-objects, which
+ * actually manage each individual world's multiblocks.
+ * @author Erogenous Beef
  */
 public class MultiblockRegistry {
 	// World > WorldRegistry map
 	private static HashMap<World, MultiblockWorldRegistry> registries = new HashMap<World, MultiblockWorldRegistry>();
 	
-	// Parts that need to be initialized.
-	private static HashMap<Integer, HashMap<Long, List<IMultiblockPart>>> partsAwaitingInit = new HashMap<Integer, HashMap<Long, List<IMultiblockPart>>>();
-	
-	// All parts that are active, indexed by dimension and chunk.
-	private static HashMap<Integer, HashMap<Long, List<IMultiblockPart>>> loadedParts = new HashMap<Integer, HashMap<Long, List<IMultiblockPart>>>();
-
 	/**
 	 * Called before Tile Entities are ticked in the world. Do bookkeeping here.
 	 * @param world The world being ticked
@@ -35,10 +30,6 @@ public class MultiblockRegistry {
 	public static void tickStart(World world) {
 		if(registries.containsKey(world)) {
 			MultiblockWorldRegistry registry = registries.get(world);
-			if(!registry.isSameWorld(world)) {
-				throw new IllegalArgumentException("Mismatched world in world registry - this should not happen!");
-			}
-			
 			registry.tickStart();
 		}
 	}
@@ -50,10 +41,6 @@ public class MultiblockRegistry {
 	public static void tickEnd(World world) {
 		if(registries.containsKey(world)) {
 			MultiblockWorldRegistry registry = registries.get(world);
-			if(!registry.isSameWorld(world)) {
-				throw new IllegalArgumentException("Mismatched world in world registry - this should not happen!");
-			}
-			
 			registry.tickEnd();
 		}
 	}
@@ -132,7 +119,7 @@ public class MultiblockRegistry {
 			registries.get(world).addDeadController(controller);
 		}
 		else {
-			FMLLog.warning("Controller %d in world %s marked as dead, but that world does not exist! Controller is being ignored.", controller.hashCode(), world);
+			FMLLog.warning("Controller %d in world %s marked as dead, but that world is not tracked! Controller is being ignored.", controller.hashCode(), world);
 		}
 	}
 	
