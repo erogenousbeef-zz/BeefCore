@@ -1,18 +1,9 @@
 package erogenousbeef.core.multiblock;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 
-import cpw.mods.fml.common.FMLLog;
-import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
+import cpw.mods.fml.common.FMLLog;
 
 /**
  * This is a very static singleton registry class which directs incoming events to sub-objects, which
@@ -20,6 +11,8 @@ import net.minecraft.world.World;
  * @author Erogenous Beef
  */
 public class MultiblockRegistry {
+	public static boolean debugMode = false;
+	
 	// World > WorldRegistry map
 	private static HashMap<World, MultiblockWorldRegistry> registries = new HashMap<World, MultiblockWorldRegistry>();
 	

@@ -3,8 +3,6 @@ package erogenousbeef.core.multiblock;
 import java.util.EnumSet;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.World;
-import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.IScheduledTickHandler;
 import cpw.mods.fml.common.TickType;
 

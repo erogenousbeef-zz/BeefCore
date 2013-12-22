@@ -1,6 +1,7 @@
 package erogenousbeef.core.multiblock;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -8,13 +9,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import cpw.mods.fml.common.FMLLog;
-
-import erogenousbeef.core.common.CoordTriplet;
-
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.IChunkProvider;
+import cpw.mods.fml.common.FMLLog;
+import erogenousbeef.core.common.CoordTriplet;
 
 /**
  * This class manages all the multiblock controllers that exist in a given world,
@@ -82,9 +81,6 @@ public class MultiblockWorldRegistry {
 						controller.updateMultiblockEntity();
 					}
 				}
-				else {
-					FMLLog.info("Controller %d is registered in the wrong world!", controller.hashCode());
-				}
 			}
 		}
 	}
@@ -131,19 +127,35 @@ public class MultiblockWorldRegistry {
 							debugLog("Part @ %s has %d nearby compatible controllers, attached to %d and will merge the others", coord, compatibleControllers.size(), orphan.getMultiblockController().hashCode());
 							// THIS IS THE ONLY PLACE WHERE MERGES ARE DETECTED
 							// Multiple compatible controllers indicates an impending merge.
-							// Locate the appropriate merge pool, add this set to that set.
+							// Locate the appropriate merge pool(s)
 							boolean hasAddedToPool = false;
+							List<Set<MultiblockControllerBase>> candidatePools = new ArrayList<Set<MultiblockControllerBase>>();
 							for(Set<MultiblockControllerBase> candidatePool : mergePools) {
 								if(!Collections.disjoint(candidatePool, compatibleControllers)) {
 									// They share at least one element, so that means they will all touch after the merge
-									candidatePool.addAll(compatibleControllers);
-									hasAddedToPool = true;
-									break;
+									candidatePools.add(candidatePool);
 								}
 							}
 							
-							if(!hasAddedToPool) {
+							if(candidatePools.size() <= 0) {
+								// No pools nearby, create a new merge pool
 								mergePools.add(compatibleControllers);
+							}
+							else if(candidatePools.size() == 1) {
+								// Only one pool nearby, simply add to that one
+								candidatePools.get(0).addAll(compatibleControllers);
+							}
+							else {
+								// Multiple pools- merge into one, then add the compatible controllers
+								debugLog("Multiple candidate merge pools - Merging %d pools into one!", candidatePools.size());
+								Set<MultiblockControllerBase> masterPool = candidatePools.get(0);
+								Set<MultiblockControllerBase> consumedPool;
+								for(int i = 1; i < candidatePools.size(); i++) {
+									consumedPool = candidatePools.get(i);
+									masterPool.addAll(consumedPool);
+									mergePools.remove(consumedPool);
+								}
+								masterPool.addAll(compatibleControllers);
 							}
 						}
 						else {
@@ -161,7 +173,7 @@ public class MultiblockWorldRegistry {
 			// To do this, we combine lists of machines that are touching one another and therefore
 			// should voltron the fuck up.
 			for(Set<MultiblockControllerBase> mergePool : mergePools) {
-				debugLog("Merging a pool of %d controllers", mergePool.size());
+				debugLog("Merging a pool of %d controllers: %s", mergePool.size(), Arrays.toString(mergePool.toArray()));
 				// Search for the new master machine, which will take over all the blocks contained in the other machines
 				MultiblockControllerBase newMaster = null;
 				for(MultiblockControllerBase controller : mergePool) {
@@ -180,18 +192,21 @@ public class MultiblockWorldRegistry {
 						if(controller != newMaster) {
 							newMaster.assimilate(controller);
 							addDeadController(controller);
+							addDirtyController(newMaster);
 						}
 					}
 				}
 			}
 		}
 
-		// Process splits
+		// Process splits and assembly
 		// Any controllers which have had parts removed must be checked to see if some parts are no longer
 		// physically connected to their master.
 		if(dirtyControllers.size() > 0) {
 			Set<IMultiblockPart> newlyDetachedParts = null;
 			for(MultiblockControllerBase controller : dirtyControllers) {
+				debugLog("Evaluating dirty controller %d of size %d", controller.hashCode(), controller.getNumConnectedBlocks());
+
 				// Tell the machine to check if any parts are disconnected.
 				// It should return a set of parts which are no longer connected.
 				// POSTCONDITION: The controller must have informed those parts that
@@ -199,8 +214,8 @@ public class MultiblockWorldRegistry {
 				newlyDetachedParts = controller.checkForDisconnections();
 				
 				if(!controller.isEmpty()) {
-					controller.checkIfMachineIsWhole();
 					controller.recalculateMinMaxCoords();
+					controller.checkIfMachineIsWhole();
 				}
 				else {
 					addDeadController(controller);
@@ -254,7 +269,7 @@ public class MultiblockWorldRegistry {
 	 * @param part The part which is being added to this world.
 	 */
 	public void onPartAdded(IMultiblockPart part) {
-		FMLLog.info("Adding new part to world %s at %s", worldObj.toString(), part.getWorldLocation());
+		debugLog("Adding new part to world %s at %s", worldObj.toString(), part.getWorldLocation());
 		CoordTriplet worldLocation = part.getWorldLocation();
 		if(!worldObj.getChunkProvider().chunkExists(worldLocation.getChunkX(), worldLocation.getChunkZ())) {
 			// Part goes into the waiting-for-chunk-load list
@@ -383,6 +398,8 @@ public class MultiblockWorldRegistry {
 	}
 	
 	private void debugLog(String format, Object... data) {
+		if(!MultiblockRegistry.debugMode) { return; }
+
 		// TODO REMOVEME
 		final int dataLen = data.length;
 		data = java.util.Arrays.copyOf(data, dataLen+1);

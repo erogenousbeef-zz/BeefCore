@@ -1,21 +1,16 @@
 package erogenousbeef.core.multiblock;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import cpw.mods.fml.common.FMLLog;
-import net.minecraft.block.material.Material;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import cpw.mods.fml.common.FMLLog;
 import erogenousbeef.core.common.CoordTriplet;
 
 /**
@@ -258,99 +253,100 @@ public abstract class MultiblockControllerBase {
 	/**
 	 * @return True if the machine is "whole" and should be assembled. False otherwise.
 	 */
-	protected boolean isMachineWhole() {
-		if(connectedBlocks.size() >= getMinimumNumberOfBlocksForAssembledMachine()) {
-			// Quickly check for exceeded dimensions
-			int deltaX = maximumCoord.x - minimumCoord.x + 1;
-			int deltaY = maximumCoord.y - minimumCoord.y + 1;
-			int deltaZ = maximumCoord.z - minimumCoord.z + 1;
-			
-			int maxX = getMaximumXSize();
-			int maxY = getMaximumYSize();
-			int maxZ = getMaximumZSize();
-			
-			if(maxX > 0 && deltaX > maxX) { return false; }
-			if(maxY > 0 && deltaY > maxY) { return false; }
-			if(maxZ > 0 && deltaZ > maxZ) { return false; }
-			
-			// Now we run a simple check on each block within that volume.
-			// Any block deviating = NO DEAL SIR
-			TileEntity te;
-			IMultiblockPart part;
-			boolean dealbreaker = false;
-			for(int x = minimumCoord.x; !dealbreaker && x <= maximumCoord.x; x++) {
-				for(int y = minimumCoord.y; !dealbreaker && y <= maximumCoord.y; y++) {
-					for(int z = minimumCoord.z; !dealbreaker && z <= maximumCoord.z; z++) {
-						// Okay, figure out what sort of block this should be.
-						
-						te = this.worldObj.getBlockTileEntity(x, y, z);
-						if(te != null && te instanceof IMultiblockPart) {
-							part = (IMultiblockPart)te;
+	protected boolean isMachineWhole() throws MultiblockValidationException {
+		if(connectedBlocks.size() < getMinimumNumberOfBlocksForAssembledMachine()) {
+			throw new MultiblockValidationException("Machine is too small.");
+		}
+		
+		// Quickly check for exceeded dimensions
+		int deltaX = maximumCoord.x - minimumCoord.x + 1;
+		int deltaY = maximumCoord.y - minimumCoord.y + 1;
+		int deltaZ = maximumCoord.z - minimumCoord.z + 1;
+		
+		int maxX = getMaximumXSize();
+		int maxY = getMaximumYSize();
+		int maxZ = getMaximumZSize();
+		
+		if(maxX > 0 && deltaX > maxX) { return false; }
+		if(maxY > 0 && deltaY > maxY) { return false; }
+		if(maxZ > 0 && deltaZ > maxZ) { return false; }
+		
+		// Now we run a simple check on each block within that volume.
+		// Any block deviating = NO DEAL SIR
+		TileEntity te;
+		IMultiblockPart part;
+		for(int x = minimumCoord.x; x <= maximumCoord.x; x++) {
+			for(int y = minimumCoord.y; y <= maximumCoord.y; y++) {
+				for(int z = minimumCoord.z; z <= maximumCoord.z; z++) {
+					// Okay, figure out what sort of block this should be.
+					
+					te = this.worldObj.getBlockTileEntity(x, y, z);
+					if(te instanceof IMultiblockPart) {
+						part = (IMultiblockPart)te;
+					}
+					else {
+						// This is permitted so that we can incorporate certain non-multiblock parts inside interiors
+						part = null;
+					}
+					
+					// Validate block type against both part-level and material-level validators.
+					int extremes = 0;
+					if(x == minimumCoord.x) { extremes++; }
+					if(y == minimumCoord.y) { extremes++; }
+					if(z == minimumCoord.z) { extremes++; }
+					
+					if(x == maximumCoord.x) { extremes++; }
+					if(y == maximumCoord.y) { extremes++; }
+					if(z == maximumCoord.z) { extremes++; }
+					
+					if(extremes >= 2) {
+						if(part != null && !part.isGoodForFrame()) {
+							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's frame", x, y, z));
 						}
-						else {
-							part = null;
+						else if(part == null && !isBlockGoodForFrame(this.worldObj, x, y, z)) {
+							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's frame", x, y, z));
 						}
-						
-						// Validate block type against both part-level and material-level validators.
-						int extremes = 0;
-						if(x == minimumCoord.x) { extremes++; }
-						if(y == minimumCoord.y) { extremes++; }
-						if(z == minimumCoord.z) { extremes++; }
-						
-						if(x == maximumCoord.x) { extremes++; }
-						if(y == maximumCoord.y) { extremes++; }
-						if(z == maximumCoord.z) { extremes++; }
-						
-						if(extremes >= 2) {
-							if(part != null && !part.isGoodForFrame()) {
-								dealbreaker = true;
+					}
+					else if(extremes == 1) {
+						if(y == maximumCoord.y) {
+							if(part != null && !part.isGoodForTop()) {
+								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's top face", x, y, z));
 							}
-							else if(part == null && !isBlockGoodForFrame(this.worldObj, x, y, z)) {
-								dealbreaker = true;
+							else if(part == null & !isBlockGoodForTop(this.worldObj, x, y, z)) {
+								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's top face", x, y, z));
 							}
 						}
-						else if(extremes == 1) {
-							if(y == maximumCoord.y) {
-								if(part != null && !part.isGoodForTop()) {
-									dealbreaker = true;
-								}
-								else if(part == null & !isBlockGoodForTop(this.worldObj, x, y, z)) {
-									dealbreaker = true;
-								}
+						else if(y == minimumCoord.y) {
+							if(part != null && !part.isGoodForBottom()) {
+								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's bottom face", x, y, z));
 							}
-							else if(y == minimumCoord.y) {
-								if(part != null && !part.isGoodForBottom()) {
-									dealbreaker = true;
-								}
-								else if(part == null & !isBlockGoodForBottom(this.worldObj, x, y, z)) {
-									dealbreaker = true;
-								}
-							}
-							else {
-								// Side
-								if(part != null && !part.isGoodForSides()) {
-									dealbreaker = true;
-								}
-								else if(part == null & !isBlockGoodForSides(this.worldObj, x, y, z)) {
-									dealbreaker = true;
-								}
+							else if(part == null & !isBlockGoodForBottom(this.worldObj, x, y, z)) {
+								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's bottom face", x, y, z));
 							}
 						}
 						else {
-							if(part != null && !part.isGoodForInterior()) {
-								dealbreaker = true;
+							// Side
+							if(part != null && !part.isGoodForSides()) {
+								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's side faces", x, y, z));
 							}
-							else if(part == null & !isBlockGoodForInterior(this.worldObj, x, y, z)) {
-								dealbreaker = true;
+							else if(part == null & !isBlockGoodForSides(this.worldObj, x, y, z)) {
+								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's side faces", x, y, z));
 							}
+						}
+					}
+					else {
+						if(part != null && !part.isGoodForInterior()) {
+							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's interior", x, y, z));
+						}
+						else if(part == null & !isBlockGoodForInterior(this.worldObj, x, y, z)) {
+							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's interior", x, y, z));
 						}
 					}
 				}
 			}
-			
-			return !dealbreaker;
 		}
-		return false;
+		
+		return true;
 	}
 	
 	/**
@@ -361,7 +357,14 @@ public abstract class MultiblockControllerBase {
 	 */
 	public void checkIfMachineIsWhole() {
 		AssemblyState oldState = this.assemblyState;
-		boolean isWhole = isMachineWhole();
+		boolean isWhole;
+		try {
+			isWhole = isMachineWhole();
+		} catch (MultiblockValidationException e) {
+			// TODO: Send message back to client
+			FMLLog.info("[%s] Reactor %d is disassembled. Reason: %s",  (worldObj.isRemote?"CLIENT":"SERVER"), hashCode(), e.getMessage());
+			isWhole = false;
+		}
 		
 		if(isWhole) {
 			// This will alter assembly state
@@ -453,7 +456,7 @@ public abstract class MultiblockControllerBase {
 		}
 
 		this.onAssimilate(other);
-		other.onAssimilated(this);;
+		other.onAssimilated(this);
 	}
 	
 	/**
@@ -704,6 +707,10 @@ public abstract class MultiblockControllerBase {
 	 */
 	public Set<IMultiblockPart> checkForDisconnections() {
 		if(!this.shouldCheckForDisconnections) {
+			return null;
+		}
+		
+		if(this.isEmpty()) {
 			return null;
 		}
 		

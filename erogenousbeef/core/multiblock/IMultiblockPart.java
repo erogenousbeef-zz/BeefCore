@@ -2,8 +2,6 @@ package erogenousbeef.core.multiblock;
 
 import java.util.Set;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import erogenousbeef.core.common.CoordTriplet;
