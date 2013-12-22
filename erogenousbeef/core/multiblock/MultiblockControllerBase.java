@@ -175,7 +175,7 @@ public abstract class MultiblockControllerBase {
 		CoordTriplet coord = part.getWorldLocation();
 		if(chunkUnloading && this.assemblyState == AssemblyState.Assembled) {
 			this.assemblyState = AssemblyState.Paused;
-			this.pauseMachine();
+			this.onMachinePaused();
 		}
 
 		// Strip out this part
@@ -425,32 +425,6 @@ public abstract class MultiblockControllerBase {
 	}
 	
 	/**
-	 * Called when the machine is paused, generally due to chunk unloads or merges.
-	 * This should perform any machine-halt cleanup logic, but not change any user
-	 * settings.
-	 * Calls onMachineBroken on all attached parts.
-	 */
-	private void pauseMachine() {
-		TileEntity te;
-		// TODO: Do we need this?!
-		IChunkProvider chunkProvider = worldObj.getChunkProvider();
-		for(CoordTriplet coord : connectedBlocks) {
-			if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
-				// Chunk is already unloaded, don't fetch the TE.
-				// This happens on SMP servers when players log out.
-				continue;
-			}
-			
-			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
-			if(te instanceof IMultiblockPart) {
-				((IMultiblockPart)te).onMachinePaused();
-			}
-		}
-		
-		onMachinePaused();
-	}
-
-	/**
 	 * Assimilate another controller into this controller.
 	 * Acquire all of the other controller's blocks and attach them
 	 * to this one.
@@ -536,9 +510,9 @@ public abstract class MultiblockControllerBase {
 		}
 
 		if(worldObj.isRemote) {
-			clientUpdate();
+			updateClient();
 		}
-		else if(serverUpdate()) {
+		else if(updateServer()) {
 			// If this returns true, the server has changed its internal data. 
 			// If our chunks are loaded (they should be), we must mark our chunks as dirty.
 			if(this.worldObj.checkChunksExist(minimumCoord.x, minimumCoord.y, minimumCoord.z, maximumCoord.x, maximumCoord.y, maximumCoord.z)) {
@@ -566,13 +540,13 @@ public abstract class MultiblockControllerBase {
 	 * Note that this will only be called when the machine is assembled.
 	 * @return True if the multiblock should save data, i.e. its internal game state has changed. False otherwise.
 	 */
-	protected abstract boolean serverUpdate();
+	protected abstract boolean updateServer();
 	
 	/**
 	 * Client-side update loop. Generally, this shouldn't do anything, but if you want
 	 * to do some interpolation or something, do it here.
 	 */
-	protected abstract void clientUpdate();
+	protected abstract void updateClient();
 	
 	// Validation helpers
 	/**
@@ -869,4 +843,15 @@ public abstract class MultiblockControllerBase {
 		connectedBlocks.clear();
 		return detachedParts;
 	}
+
+	/**
+	 * Called from a part that wishes to store data from this controller when it gets orphaned.
+	 * Generally, this data will be read back in during onAddedPartWithMultiblockData().
+	 * @param newOrphan The part being orphaned.
+	 * @param oldSize The size of the controller before detaching orphans.
+	 * @param newSize The size of the controller after detaching orphans.
+	 * @param dataContainer An NBT Compound Tag into which to write data.
+	 */
+	public abstract void getOrphanData(IMultiblockPart newOrphan, int oldSize, int newSize, NBTTagCompound dataContainer);
+
 }

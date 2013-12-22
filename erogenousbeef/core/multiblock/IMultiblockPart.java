@@ -129,15 +129,6 @@ public interface IMultiblockPart {
 	 */
 	public IMultiblockPart[] getNeighboringParts();
 
-	// Multiblock data communication
-	// Most of the time you can ignore this.
-	/**
-	 * Dispatches a packet across the wire and marks this block for a world update.
-	 * The default implementation simply calls getDescriptionPacket().
-	 * Override this if you wish to do fancy updating logic.
-	 */
-	public void sendUpdatePacket();
-	
 	// Multiblock business-logic callbacks - implement these!
 	/**
 	 * Called when a machine is fully assembled from the disassembled state, meaning
@@ -215,13 +206,6 @@ public interface IMultiblockPart {
 	 * Do NOT fire the full disconnection logic.
 	 */
 	public void assertDetached();
-
-	/**
-	 * TODO: Do we need this?!
-	 * Called when this part is being removed from the world for non-game-logic reasons,
-	 * such as chunk unloads.
-	 */
-	public void onMachinePaused();
 
 	/**
 	 * @return True if a part has multiblock game-data saved inside it.

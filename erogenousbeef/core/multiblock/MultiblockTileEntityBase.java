@@ -176,12 +176,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	}
 	
 	///// Things to override in most implementations (IMultiblockPart)
-	@Override
-	public void sendUpdatePacket() {
-		// TODO: REMOVEME?
-		this.worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
-	}
-	
 	/**
 	 * Override this to easily modify the description packet's data without having
 	 * to worry about sending the packet itself.
@@ -353,6 +347,14 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 		}
 		IMultiblockPart[] tmp = new IMultiblockPart[neighborParts.size()];
 		return neighborParts.toArray(tmp);
+	}
+	
+	@Override
+	public void onOrphaned(MultiblockControllerBase controller, int oldSize, int newSize) {
+		NBTTagCompound data = new NBTTagCompound();
+		controller.getOrphanData(this, oldSize, newSize, data);
+		this.cachedMultiblockData = data;
+		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this);
 	}
 
 	///// Private/Protected Logic Helpers
