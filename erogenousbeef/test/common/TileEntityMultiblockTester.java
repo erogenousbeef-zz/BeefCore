@@ -93,9 +93,6 @@ public class TileEntityMultiblockTester extends MultiblockTileEntityBase {
 	public void onMachineAssembled(MultiblockControllerBase multiblockControllerBase) {}
 	
 	@Override
-	public void onMachinePaused() {}
-	
-	@Override
 	public void onMachineBroken() { }
 
 	@Override

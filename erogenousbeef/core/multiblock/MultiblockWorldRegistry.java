@@ -103,6 +103,8 @@ public class MultiblockWorldRegistry {
 					
 					// Process orphaned blocks
 					// These are blocks that exist in a valid chunk and require a machine
+					// TODO: There is a CME that occurs when iterating over this list when
+					// there are a large number of blocks in a reactor. Debug this.
 					for(IMultiblockPart orphan : orphanedParts) {
 						coord = orphan.getWorldLocation();
 						if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
