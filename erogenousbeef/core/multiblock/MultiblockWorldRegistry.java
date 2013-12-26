@@ -96,78 +96,83 @@ public class MultiblockWorldRegistry {
 		// Merge pools - sets of adjacent machines which should be merged later on in processing
 		List<Set<MultiblockControllerBase>> mergePools = null;
 		if(orphanedParts.size() > 0) {
+			Set<IMultiblockPart> orphansToProcess = null;
+			
+			// Keep the synchronized block small. We can't iterate over orphanedParts directly
+			// because the client does not know which chunks are actually loaded, so attachToNeighbors()
+			// is not chunk-safe on the client, because Minecraft is stupid.
+			// It's possible to polyfill this, but the polyfill is too slow for comfort.
 			synchronized(orphanedPartsMutex) {
 				if(orphanedParts.size() > 0) {
-					debugLog("World registry processing %d orphans", orphanedParts.size());
-					Set<MultiblockControllerBase> compatibleControllers;
+					orphansToProcess = orphanedParts;
+					orphanedParts = new HashSet<IMultiblockPart>();
+				}
+			}
+			
+			if(orphansToProcess != null && orphansToProcess.size() > 0) {
+				debugLog("World registry processing %d orphans", orphansToProcess.size());
+				Set<MultiblockControllerBase> compatibleControllers;
+				
+				// Process orphaned blocks
+				// These are blocks that exist in a valid chunk and require a machine
+				// TODO: There is a CME that occurs when iterating over this list when
+				// there are a large number of blocks in a reactor. Debug this.
+				for(IMultiblockPart orphan : orphansToProcess) {
+					coord = orphan.getWorldLocation();
+					if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
+						debugLog("Orphaned part at %s is in an invalid chunk, ignoring!", coord);
+						continue;
+					}
 					
-					// Process orphaned blocks
-					// These are blocks that exist in a valid chunk and require a machine
-					// TODO: There is a CME that occurs when iterating over this list when
-					// there are a large number of blocks in a reactor. Debug this.
-					for(IMultiblockPart orphan : orphanedParts) {
-						coord = orphan.getWorldLocation();
-						if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
-							debugLog("Orphaned part at %s is in an invalid chunk, ignoring!", coord);
-							continue;
+					// THIS IS THE ONLY PLACE WHERE PARTS ATTACH TO MACHINES
+					// Try to attach to a neighbor's master controller
+					compatibleControllers = orphan.attachToNeighbors();
+					if(compatibleControllers == null) {
+						// FOREVER ALONE! Create and register a new controller.
+						// THIS IS THE ONLY PLACE WHERE NEW CONTROLLERS ARE CREATED.
+						debugLog("Creating a new controller for part @ %s", orphan.getWorldLocation());
+						MultiblockControllerBase newController = orphan.createNewMultiblock();
+						newController.attachBlock(orphan);
+						this.controllers.add(newController);
+					}
+					else if(compatibleControllers.size() > 1) {
+						if(mergePools == null) { mergePools = new ArrayList<Set<MultiblockControllerBase>>(); }
+
+						// THIS IS THE ONLY PLACE WHERE MERGES ARE DETECTED
+						// Multiple compatible controllers indicates an impending merge.
+						// Locate the appropriate merge pool(s)
+						boolean hasAddedToPool = false;
+						List<Set<MultiblockControllerBase>> candidatePools = new ArrayList<Set<MultiblockControllerBase>>();
+						for(Set<MultiblockControllerBase> candidatePool : mergePools) {
+							if(!Collections.disjoint(candidatePool, compatibleControllers)) {
+								// They share at least one element, so that means they will all touch after the merge
+								candidatePools.add(candidatePool);
+							}
 						}
 						
-						// THIS IS THE ONLY PLACE WHERE PARTS ATTACH TO MACHINES
-						// Try to attach to a neighbor's master controller
-						compatibleControllers = orphan.attachToNeighbors();
-						if(compatibleControllers == null) {
-							// FOREVER ALONE! Create and register a new controller.
-							// THIS IS THE ONLY PLACE WHERE NEW CONTROLLERS ARE CREATED.
-							debugLog("Creating a new controller for part @ %s", orphan.getWorldLocation());
-							MultiblockControllerBase newController = orphan.createNewMultiblock();
-							newController.attachBlock(orphan);
-							this.controllers.add(newController);
+						if(candidatePools.size() <= 0) {
+							// No pools nearby, create a new merge pool
+							mergePools.add(compatibleControllers);
 						}
-						else if(compatibleControllers.size() > 1) {
-							if(mergePools == null) { mergePools = new ArrayList<Set<MultiblockControllerBase>>(); }
-	
-							debugLog("Part @ %s has %d nearby compatible controllers, attached to %d and will merge the others", coord, compatibleControllers.size(), orphan.getMultiblockController().hashCode());
-							// THIS IS THE ONLY PLACE WHERE MERGES ARE DETECTED
-							// Multiple compatible controllers indicates an impending merge.
-							// Locate the appropriate merge pool(s)
-							boolean hasAddedToPool = false;
-							List<Set<MultiblockControllerBase>> candidatePools = new ArrayList<Set<MultiblockControllerBase>>();
-							for(Set<MultiblockControllerBase> candidatePool : mergePools) {
-								if(!Collections.disjoint(candidatePool, compatibleControllers)) {
-									// They share at least one element, so that means they will all touch after the merge
-									candidatePools.add(candidatePool);
-								}
-							}
-							
-							if(candidatePools.size() <= 0) {
-								// No pools nearby, create a new merge pool
-								mergePools.add(compatibleControllers);
-							}
-							else if(candidatePools.size() == 1) {
-								// Only one pool nearby, simply add to that one
-								candidatePools.get(0).addAll(compatibleControllers);
-							}
-							else {
-								// Multiple pools- merge into one, then add the compatible controllers
-								debugLog("Multiple candidate merge pools - Merging %d pools into one!", candidatePools.size());
-								Set<MultiblockControllerBase> masterPool = candidatePools.get(0);
-								Set<MultiblockControllerBase> consumedPool;
-								for(int i = 1; i < candidatePools.size(); i++) {
-									consumedPool = candidatePools.get(i);
-									masterPool.addAll(consumedPool);
-									mergePools.remove(consumedPool);
-								}
-								masterPool.addAll(compatibleControllers);
-							}
+						else if(candidatePools.size() == 1) {
+							// Only one pool nearby, simply add to that one
+							candidatePools.get(0).addAll(compatibleControllers);
 						}
 						else {
-							debugLog("Part @ %s has attached to controller %d", coord, orphan.getMultiblockController().hashCode());
+							// Multiple pools- merge into one, then add the compatible controllers
+							Set<MultiblockControllerBase> masterPool = candidatePools.get(0);
+							Set<MultiblockControllerBase> consumedPool;
+							for(int i = 1; i < candidatePools.size(); i++) {
+								consumedPool = candidatePools.get(i);
+								masterPool.addAll(consumedPool);
+								mergePools.remove(consumedPool);
+							}
+							masterPool.addAll(compatibleControllers);
 						}
 					}
-					orphanedParts.clear();
 				}
-			} // end synchronized block on orphanedPartsMutex
-		} // good old double-check thread safety/performance tricks
+			}
+		}
 
 		if(mergePools != null && mergePools.size() > 0) {
 			// Process merges - any machines that have been marked for merge should be merged
@@ -271,7 +276,6 @@ public class MultiblockWorldRegistry {
 	 * @param part The part which is being added to this world.
 	 */
 	public void onPartAdded(IMultiblockPart part) {
-		debugLog("Adding new part to world %s at %s", worldObj.toString(), part.getWorldLocation());
 		CoordTriplet worldLocation = part.getWorldLocation();
 		if(!worldObj.getChunkProvider().chunkExists(worldLocation.getChunkX(), worldLocation.getChunkZ())) {
 			// Part goes into the waiting-for-chunk-load list
@@ -401,6 +405,7 @@ public class MultiblockWorldRegistry {
 	
 	private void debugLog(String format, Object... data) {
 		if(!MultiblockRegistry.debugMode) { return; }
+		if(!this.worldObj.isRemote) { return; }
 
 		// TODO REMOVEME
 		final int dataLen = data.length;

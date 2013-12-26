@@ -362,7 +362,7 @@ public abstract class MultiblockControllerBase {
 			isWhole = isMachineWhole();
 		} catch (MultiblockValidationException e) {
 			// TODO: Send message back to client
-			FMLLog.info("[%s] Reactor %d is disassembled. Reason: %s",  (worldObj.isRemote?"CLIENT":"SERVER"), hashCode(), e.getMessage());
+			//FMLLog.info("[%s] Reactor %d is disassembled. Reason: %s",  (worldObj.isRemote?"CLIENT":"SERVER"), hashCode(), e.getMessage());
 			isWhole = false;
 		}
 		
@@ -779,7 +779,7 @@ public abstract class MultiblockControllerBase {
 			part.setVisited();
 			visitedParts++;
 
-			nearbyParts = part.getNeighboringParts(); // Chunk-safe
+			nearbyParts = part.getNeighboringParts(); // Chunk-safe on server, but not on client
 			for(IMultiblockPart nearbyPart : nearbyParts) {
 				// Ignore different machines
 				if(nearbyPart.getMultiblockController() != this) {

@@ -122,7 +122,8 @@ public interface IMultiblockPart {
 	 * Primarily a utility method. Only works after tileentity construction, so it cannot be used in
 	 * MultiblockControllerBase::attachBlock.
 	 * 
-	 * This method is chunk-safe; it will not query for parts in chunks that are unloaded.
+	 * This method is chunk-safe on the server; it will not query for parts in chunks that are unloaded.
+	 * Note that no method is chunk-safe on the client, because ChunkProviderClient is stupid.
 	 * @return An array of references to neighboring IMultiblockPart tile entities.
 	 */
 	public IMultiblockPart[] getNeighboringParts();
