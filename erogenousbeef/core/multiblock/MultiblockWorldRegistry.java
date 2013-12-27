@@ -110,7 +110,6 @@ public class MultiblockWorldRegistry {
 			}
 			
 			if(orphansToProcess != null && orphansToProcess.size() > 0) {
-				debugLog("World registry processing %d orphans", orphansToProcess.size());
 				Set<MultiblockControllerBase> compatibleControllers;
 				
 				// Process orphaned blocks
@@ -118,7 +117,6 @@ public class MultiblockWorldRegistry {
 				for(IMultiblockPart orphan : orphansToProcess) {
 					coord = orphan.getWorldLocation();
 					if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
-						debugLog("Orphaned part at %s is in an invalid chunk, ignoring!", coord);
 						continue;
 					}
 					
@@ -128,7 +126,6 @@ public class MultiblockWorldRegistry {
 					if(compatibleControllers == null) {
 						// FOREVER ALONE! Create and register a new controller.
 						// THIS IS THE ONLY PLACE WHERE NEW CONTROLLERS ARE CREATED.
-						debugLog("Creating a new controller for part @ %s", orphan.getWorldLocation());
 						MultiblockControllerBase newController = orphan.createNewMultiblock();
 						newController.attachBlock(orphan);
 						this.controllers.add(newController);
@@ -178,7 +175,6 @@ public class MultiblockWorldRegistry {
 			// To do this, we combine lists of machines that are touching one another and therefore
 			// should voltron the fuck up.
 			for(Set<MultiblockControllerBase> mergePool : mergePools) {
-				debugLog("Merging a pool of %d controllers: %s", mergePool.size(), Arrays.toString(mergePool.toArray()));
 				// Search for the new master machine, which will take over all the blocks contained in the other machines
 				MultiblockControllerBase newMaster = null;
 				for(MultiblockControllerBase controller : mergePool) {
@@ -210,8 +206,6 @@ public class MultiblockWorldRegistry {
 		if(dirtyControllers.size() > 0) {
 			Set<IMultiblockPart> newlyDetachedParts = null;
 			for(MultiblockControllerBase controller : dirtyControllers) {
-				debugLog("Evaluating dirty controller %d of size %d", controller.hashCode(), controller.getNumConnectedBlocks());
-
 				// Tell the machine to check if any parts are disconnected.
 				// It should return a set of parts which are no longer connected.
 				// POSTCONDITION: The controller must have informed those parts that
@@ -243,9 +237,6 @@ public class MultiblockWorldRegistry {
 				if(!controller.isEmpty()) {
 					FMLLog.severe("Found a non-empty controller. Forcing it to shed its blocks and die. This should never happen!");
 					detachedParts.addAll(controller.detachAllBlocks());
-				}
-				else {
-					debugLog("Successfully removing dead controller %d", controller.hashCode());
 				}
 
 				// THIS IS THE ONLY PLACE WHERE CONTROLLERS ARE UNREGISTERED.
@@ -288,14 +279,12 @@ public class MultiblockWorldRegistry {
 					partSet = partsAwaitingChunkLoad.get(chunkHash);
 				}
 				
-				debugLog("Adding new part @ %s to chunkload list for chunk %d, %d", worldLocation, worldLocation.getChunkX(), worldLocation.getChunkZ());
 				partSet.add(part);
 			}
 		}
 		else {
 			// Part goes into the orphan queue, to be checked this tick
 			addOrphanedPartThreadsafe(part);
-			debugLog("Adding new part @ %s to orphan list, which is now size %d", worldLocation, orphanedParts.size());
 		}
 	}
 	
@@ -381,7 +370,6 @@ public class MultiblockWorldRegistry {
 	 * @param deadController The controller which is dead.
 	 */
 	public void addDeadController(MultiblockControllerBase deadController) {
-		debugLog("Adding dead controller %d", deadController.hashCode());
 		this.deadControllers.add(deadController);
 	}
 
@@ -396,22 +384,6 @@ public class MultiblockWorldRegistry {
 	}
 	
 	/* *** PRIVATE HELPERS *** */
-	
-	private String clientOrServer() {
-		return worldObj.isRemote ? "CLIENT":"SERVER";
-	}
-	
-	private void debugLog(String format, Object... data) {
-		if(!MultiblockRegistry.debugMode) { return; }
-		if(!this.worldObj.isRemote) { return; }
-
-		// TODO REMOVEME
-		final int dataLen = data.length;
-		data = java.util.Arrays.copyOf(data, dataLen+1);
-		System.arraycopy(data, 0, data, 1, dataLen);
-		data[0] = clientOrServer();
-		FMLLog.info("[%s] " + format, data);
-	}
 	
 	private void addOrphanedPartThreadsafe(IMultiblockPart part) {
 		synchronized(orphanedPartsMutex) {

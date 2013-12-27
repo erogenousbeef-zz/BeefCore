@@ -11,8 +11,6 @@ import cpw.mods.fml.common.FMLLog;
  * @author Erogenous Beef
  */
 public class MultiblockRegistry {
-	public static boolean debugMode = false;
-	
 	// World > WorldRegistry map
 	private static HashMap<World, MultiblockWorldRegistry> registries = new HashMap<World, MultiblockWorldRegistry>();
 	
