@@ -56,6 +56,11 @@ public abstract class MultiblockControllerBase {
 	 */
 	private boolean shouldCheckForDisconnections;
 	
+	/**
+	 * Set whenever we validate the multiblock
+	 */
+	private MultiblockValidationException lastValidationException;
+	
 	protected MultiblockControllerBase(World world) {
 		// Multiblock stuff
 		worldObj = world;
@@ -67,6 +72,7 @@ public abstract class MultiblockControllerBase {
 		maximumCoord = new CoordTriplet(0,0,0);
 
 		shouldCheckForDisconnections = true;
+		lastValidationException = null;
 	}
 
 	/**
@@ -107,9 +113,6 @@ public abstract class MultiblockControllerBase {
 			onAttachedPartWithMultiblockData(part, savedData);
 			part.onMultiblockDataAssimilated();
 		}
-		
-		// TODO: Necessary?
-		this.worldObj.markBlockForUpdate(coord.x, coord.y, coord.z);
 		
 		if(this.referenceCoord == null) {
 			referenceCoord = coord;
@@ -249,6 +252,11 @@ public abstract class MultiblockControllerBase {
 	 */
 	protected abstract int getMaximumYSize();
 	
+	/**
+	 * @return An exception representing the last error encountered when trying to assemble this
+	 * multiblock, or null if there is no error.
+	 */
+	public MultiblockValidationException getLastValidationException() { return lastValidationException; }
 	
 	/**
 	 * @return True if the machine is "whole" and should be assembled. False otherwise.
@@ -358,11 +366,11 @@ public abstract class MultiblockControllerBase {
 	public void checkIfMachineIsWhole() {
 		AssemblyState oldState = this.assemblyState;
 		boolean isWhole;
+		lastValidationException = null;
 		try {
 			isWhole = isMachineWhole();
 		} catch (MultiblockValidationException e) {
-			// TODO: Send message back to client
-			//FMLLog.info("[%s] Reactor %d is disassembled. Reason: %s",  (worldObj.isRemote?"CLIENT":"SERVER"), hashCode(), e.getMessage());
+			lastValidationException = e;
 			isWhole = false;
 		}
 		
