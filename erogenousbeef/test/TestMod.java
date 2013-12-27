@@ -6,6 +6,7 @@ import net.minecraft.creativetab.CreativeTabs;
 import net.minecraftforge.common.MinecraftForge;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.Mod.Init;
 import cpw.mods.fml.common.Mod.Instance;
 import cpw.mods.fml.common.Mod.PreInit;
@@ -29,11 +30,11 @@ public class TestMod {
 	public static final String NAME = "Beef's Testing Mod";
 	public static final String VERSION = "1.0";
 
-	public static final String RESOURCE_PATH = "/mods/testmod/";
+	public static final String RESOURCE_PATH = "/assets/test/";
 	public static final String TEXTURE_DIRECTORY = RESOURCE_PATH;
 
 	public static final CreativeTabs TAB = new CreativeTabTest(CreativeTabs.getNextID(), CHANNEL);
-	public static final String TEXTURE_NAME_PREFIX = "testmod:";
+	public static final String TEXTURE_NAME_PREFIX = "test:";
 	
 	@Instance("TestMod")
 	public static TestMod instance;
@@ -47,7 +48,7 @@ public class TestMod {
 	
 	private MultiblockEventHandler multiblockEventHandler;
 	
-	@PreInit
+	@EventHandler
 	public void preInit(FMLPreInitializationEvent evt) {
 		proxy.preInit();
 		
@@ -58,7 +59,7 @@ public class TestMod {
 		}
 	}
 	
-	@Init
+	@EventHandler
 	public void load(FMLInitializationEvent evt) {
 		proxy.init();
 		register();
@@ -71,7 +72,7 @@ public class TestMod {
 		INITIALIZED = true;
 	}
 
-	@ServerAboutToStart
+	@EventHandler
 	public void registerServer(FMLServerAboutToStartEvent evt) {
 		multiblockEventHandler = new MultiblockEventHandler();
 		MinecraftForge.EVENT_BUS.register(multiblockEventHandler);
