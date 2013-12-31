@@ -869,4 +869,11 @@ public abstract class MultiblockControllerBase {
 	 */
 	public abstract void getOrphanData(IMultiblockPart newOrphan, int oldSize, int newSize, NBTTagCompound dataContainer);
 
+	/**
+	 * @return True if this multiblock machine is considered assembled and ready to go.
+	 */
+	public boolean isAssembled() {
+		return this.assemblyState == AssemblyState.Assembled;
+	}
+
 }
