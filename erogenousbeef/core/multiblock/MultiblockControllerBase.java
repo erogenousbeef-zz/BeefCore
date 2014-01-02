@@ -253,6 +253,25 @@ public abstract class MultiblockControllerBase {
 	protected abstract int getMaximumYSize();
 	
 	/**
+	 * Returns the minimum X dimension size of the machine. Must be at least 1, because nothing else makes sense.
+	 * @return The minimum X dimension size of the machine
+	 */
+	protected int getMinimumXSize() { return 1; }
+
+	/**
+	 * Returns the minimum Y dimension size of the machine. Must be at least 1, because nothing else makes sense.
+	 * @return The minimum Y dimension size of the machine
+	 */
+	protected int getMinimumYSize() { return 1; }
+
+	/**
+	 * Returns the minimum Z dimension size of the machine. Must be at least 1, because nothing else makes sense.
+	 * @return The minimum Z dimension size of the machine
+	 */
+	protected int getMinimumZSize() { return 1; }
+	
+	
+	/**
 	 * @return An exception representing the last error encountered when trying to assemble this
 	 * multiblock, or null if there is no error.
 	 */
@@ -278,7 +297,10 @@ public abstract class MultiblockControllerBase {
 		if(maxX > 0 && deltaX > maxX) { return false; }
 		if(maxY > 0 && deltaY > maxY) { return false; }
 		if(maxZ > 0 && deltaZ > maxZ) { return false; }
-		
+		if(deltaX < getMinimumXSize()) { return false; }
+		if(deltaY < getMinimumYSize()) { return false; }
+		if(deltaZ < getMinimumZSize()) { return false; }
+
 		// Now we run a simple check on each block within that volume.
 		// Any block deviating = NO DEAL SIR
 		TileEntity te;
