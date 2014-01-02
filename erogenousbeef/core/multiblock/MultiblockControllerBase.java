@@ -293,13 +293,16 @@ public abstract class MultiblockControllerBase {
 		int maxX = getMaximumXSize();
 		int maxY = getMaximumYSize();
 		int maxZ = getMaximumZSize();
+		int minX = getMinimumXSize();
+		int minY = getMinimumYSize();
+		int minZ = getMinimumZSize();
 		
-		if(maxX > 0 && deltaX > maxX) { return false; }
-		if(maxY > 0 && deltaY > maxY) { return false; }
-		if(maxZ > 0 && deltaZ > maxZ) { return false; }
-		if(deltaX < getMinimumXSize()) { return false; }
-		if(deltaY < getMinimumYSize()) { return false; }
-		if(deltaZ < getMinimumZSize()) { return false; }
+		if(maxX > 0 && deltaX > maxX) { throw new MultiblockValidationException(String.format("Machine is too large, it may be at most %d blocks in the X dimension", maxX)); }
+		if(maxY > 0 && deltaY > maxY) { throw new MultiblockValidationException(String.format("Machine is too large, it may be at most %d blocks in the Y dimension", maxY)); }
+		if(maxZ > 0 && deltaZ > maxZ) { throw new MultiblockValidationException(String.format("Machine is too large, it may be at most %d blocks in the Z dimension", maxZ)); }
+		if(deltaX < minX) { throw new MultiblockValidationException(String.format("Machine is too small, it must be at least %d blocks in the X dimension", minX)); }
+		if(deltaY < minY) { throw new MultiblockValidationException(String.format("Machine is too small, it must be at least %d blocks in the Y dimension", minY)); }
+		if(deltaZ < minZ) { throw new MultiblockValidationException(String.format("Machine is too small, it must be at least %d blocks in the Z dimension", minZ)); }
 
 		// Now we run a simple check on each block within that volume.
 		// Any block deviating = NO DEAL SIR
