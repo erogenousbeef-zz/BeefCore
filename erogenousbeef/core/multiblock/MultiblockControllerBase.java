@@ -481,11 +481,13 @@ public abstract class MultiblockControllerBase {
 		IMultiblockPart acquiredPart;
 		for(CoordTriplet coord : blocksToAcquire) {
 			// By definition, none of these can be the minimum block.
-			this.connectedBlocks.add(coord);
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
-			acquiredPart = (IMultiblockPart)te;
-			acquiredPart.onAssimilated(this);
-			this.onBlockAdded(acquiredPart);
+			if(te instanceof IMultiblockPart) {
+				acquiredPart = (IMultiblockPart)te;
+				this.connectedBlocks.add(coord);
+				acquiredPart.onAssimilated(this);
+				this.onBlockAdded(acquiredPart);
+			}
 		}
 
 		this.onAssimilate(other);
