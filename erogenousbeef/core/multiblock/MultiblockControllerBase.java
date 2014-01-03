@@ -843,6 +843,7 @@ public abstract class MultiblockControllerBase {
 				deadCoords.add(c);
 				orphanCandidate.onOrphaned(this, originalSize, visitedParts);
 				orphanCandidate.onDetached(this); // Force the part to disconnect
+				this.onBlockRemoved(orphanCandidate);
 				removedParts.add(orphanCandidate);
 			}
 		}
@@ -875,6 +876,7 @@ public abstract class MultiblockControllerBase {
 				if(te instanceof IMultiblockPart) {
 					part = (IMultiblockPart)te;
 					part.onDetached(this);
+					this.onBlockRemoved(part);
 					detachedParts.add(part);
 				}
 			}
