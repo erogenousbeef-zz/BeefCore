@@ -175,7 +175,7 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 * @see erogenousbeef.core.multiblock.MultiblockTileEntityBase#decodeDescriptionPacket(NBTTagCompound)
 	 */
 	protected void encodeDescriptionPacket(NBTTagCompound packetData) {
-		if(this.isMultiblockSaveDelegate()) {
+		if(this.isMultiblockSaveDelegate() && isConnected()) {
 			NBTTagCompound tag = new NBTTagCompound();
 			getMultiblockController().formatDescriptionPacket(tag);
 			packetData.setCompoundTag("multiblockData", tag);
