@@ -125,6 +125,9 @@ public abstract class MultiblockControllerBase {
 			referenceCoord = coord;
 			part.becomeMultiblockSaveDelegate();
 		}
+		else {
+			part.forfeitMultiblockSaveDelegate();
+		}
 		
 		MultiblockRegistry.addDirtyController(worldObj, this);
 	}
@@ -164,6 +167,18 @@ public abstract class MultiblockControllerBase {
 	protected abstract void onMachineDisassembled();
 	
 	/**
+	 * Callback whenever a part is removed (or will very shortly be removed) from a controller.
+	 * Do housekeeping/callbacks.
+	 * @param part The part being removed.
+	 */
+	private void onDetachBlock(IMultiblockPart part) {
+		// Strip out this part
+		part.onDetached(this);
+		this.onBlockRemoved(part);
+		part.forfeitMultiblockSaveDelegate();
+	}
+	
+	/**
 	 * Call to detach a block from this machine. Generally, this should be called
 	 * when the tile entity is being released, e.g. on block destruction.
 	 * @param part The part to detach from this machine.
@@ -177,12 +192,10 @@ public abstract class MultiblockControllerBase {
 		}
 
 		// Strip out this part
+		onDetachBlock(part);
 		connectedBlocks.remove(coord);
-		part.onDetached(this);
-		this.onBlockRemoved(part);
-		
+
 		if(referenceCoord != null && referenceCoord.equals(coord)) {
-			part.forfeitMultiblockSaveDelegate();
 			referenceCoord = null;
 		}
 
@@ -844,8 +857,7 @@ public abstract class MultiblockControllerBase {
 			if (!orphanCandidate.isVisited()) {
 				deadCoords.add(c);
 				orphanCandidate.onOrphaned(this, originalSize, visitedParts);
-				orphanCandidate.onDetached(this); // Force the part to disconnect
-				this.onBlockRemoved(orphanCandidate);
+				onDetachBlock(orphanCandidate);
 				removedParts.add(orphanCandidate);
 			}
 		}
@@ -877,8 +889,7 @@ public abstract class MultiblockControllerBase {
 				te = worldObj.getBlockTileEntity(c.x, c.y, c.z);
 				if(te instanceof IMultiblockPart) {
 					part = (IMultiblockPart)te;
-					part.onDetached(this);
-					this.onBlockRemoved(part);
+					onDetachBlock(part);
 					detachedParts.add(part);
 				}
 			}
@@ -904,5 +915,5 @@ public abstract class MultiblockControllerBase {
 	public boolean isAssembled() {
 		return this.assemblyState == AssemblyState.Assembled;
 	}
-
+	
 }

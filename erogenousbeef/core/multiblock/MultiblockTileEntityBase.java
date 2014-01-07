@@ -97,8 +97,8 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	@Override
 	public void writeToNBT(NBTTagCompound data) {
 		super.writeToNBT(data);
-		
-		if(this.saveMultiblockData) {
+
+		if(isMultiblockSaveDelegate() && isConnected()) {
 			NBTTagCompound multiblockData = new NBTTagCompound();
 			this.controller.writeToNBT(multiblockData);
 			data.setCompoundTag("multiblockData", multiblockData);
