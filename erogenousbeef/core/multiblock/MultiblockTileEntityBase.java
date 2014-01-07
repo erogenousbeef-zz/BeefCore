@@ -219,19 +219,19 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	///// Validation Helpers (IMultiblockPart)
 	
 	@Override
-	public abstract boolean isGoodForFrame();
+	public abstract void isGoodForFrame() throws MultiblockValidationException;
 
 	@Override
-	public abstract boolean isGoodForSides();
+	public abstract void isGoodForSides() throws MultiblockValidationException;
 
 	@Override
-	public abstract boolean isGoodForTop();
+	public abstract void isGoodForTop() throws MultiblockValidationException;
 
 	@Override
-	public abstract boolean isGoodForBottom();
+	public abstract void isGoodForBottom() throws MultiblockValidationException;
 
 	@Override
-	public abstract boolean isGoodForInterior();
+	public abstract void isGoodForInterior() throws MultiblockValidationException;
 
 	///// Game logic callbacks (IMultiblockPart)
 	

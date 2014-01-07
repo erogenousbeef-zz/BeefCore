@@ -346,46 +346,46 @@ public abstract class MultiblockControllerBase {
 					if(z == maximumCoord.z) { extremes++; }
 					
 					if(extremes >= 2) {
-						if(part != null && !part.isGoodForFrame()) {
-							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's frame", x, y, z));
+						if(part != null) {
+							part.isGoodForFrame();
 						}
-						else if(part == null && !isBlockGoodForFrame(this.worldObj, x, y, z)) {
-							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's frame", x, y, z));
+						else {
+							isBlockGoodForFrame(this.worldObj, x, y, z);
 						}
 					}
 					else if(extremes == 1) {
 						if(y == maximumCoord.y) {
-							if(part != null && !part.isGoodForTop()) {
-								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's top face", x, y, z));
+							if(part != null) {
+								part.isGoodForTop();
 							}
-							else if(part == null & !isBlockGoodForTop(this.worldObj, x, y, z)) {
-								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's top face", x, y, z));
+							else {
+								isBlockGoodForTop(this.worldObj, x, y, z);
 							}
 						}
 						else if(y == minimumCoord.y) {
-							if(part != null && !part.isGoodForBottom()) {
-								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's bottom face", x, y, z));
+							if(part != null) {
+								part.isGoodForBottom();
 							}
-							else if(part == null & !isBlockGoodForBottom(this.worldObj, x, y, z)) {
-								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's bottom face", x, y, z));
+							else {
+								isBlockGoodForBottom(this.worldObj, x, y, z);
 							}
 						}
 						else {
 							// Side
-							if(part != null && !part.isGoodForSides()) {
-								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's side faces", x, y, z));
+							if(part != null) {
+								part.isGoodForSides();
 							}
-							else if(part == null & !isBlockGoodForSides(this.worldObj, x, y, z)) {
-								throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's side faces", x, y, z));
+							else {
+								isBlockGoodForSides(this.worldObj, x, y, z);
 							}
 						}
 					}
 					else {
-						if(part != null && !part.isGoodForInterior()) {
-							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's interior", x, y, z));
+						if(part != null) {
+							part.isGoodForInterior();
 						}
-						else if(part == null & !isBlockGoodForInterior(this.worldObj, x, y, z)) {
-							throw new MultiblockValidationException(String.format("Block at %d, %d, %d is invalid for the machine's interior", x, y, z));
+						else {
+							isBlockGoodForInterior(this.worldObj, x, y, z);
 						}
 					}
 				}
@@ -607,10 +607,10 @@ public abstract class MultiblockControllerBase {
 	 * @param x X coordinate of the block being tested
 	 * @param y Y coordinate of the block being tested
 	 * @param z Z coordinate of the block being tested
-	 * @return True if this block can be used as part of the frame.
+	 * @throws MultiblockValidationException if the tested block is not allowed on the machine's frame
 	 */
-	protected boolean isBlockGoodForFrame(World world, int x, int y, int z) {
-		return false;
+	protected void isBlockGoodForFrame(World world, int x, int y, int z) throws MultiblockValidationException {
+		throw new MultiblockValidationException(String.format("%d, %d, %d - Block is not valid for use in the machine's interior", x, y, z));
 	}
 
 	/**
@@ -619,10 +619,10 @@ public abstract class MultiblockControllerBase {
 	 * @param x X coordinate of the block being tested
 	 * @param y Y coordinate of the block being tested
 	 * @param z Z coordinate of the block being tested
-	 * @return True if this block can be used as part of the top face.
+	 * @throws MultiblockValidationException if the tested block is not allowed on the machine's top face
 	 */
-	protected boolean isBlockGoodForTop(World world, int x, int y, int z) {
-		return false;
+	protected void isBlockGoodForTop(World world, int x, int y, int z) throws MultiblockValidationException {
+		throw new MultiblockValidationException(String.format("%d, %d, %d - Block is not valid for use in the machine's interior", x, y, z));
 	}
 	
 	/**
@@ -631,10 +631,10 @@ public abstract class MultiblockControllerBase {
 	 * @param x X coordinate of the block being tested
 	 * @param y Y coordinate of the block being tested
 	 * @param z Z coordinate of the block being tested
-	 * @return True if this block can be used as part of the bottom face.
+	 * @throws MultiblockValidationException if the tested block is not allowed on the machine's bottom face
 	 */
-	protected boolean isBlockGoodForBottom(World world, int x, int y, int z) {
-		return false;
+	protected void isBlockGoodForBottom(World world, int x, int y, int z) throws MultiblockValidationException {
+		throw new MultiblockValidationException(String.format("%d, %d, %d - Block is not valid for use in the machine's interior", x, y, z));
 	}
 	
 	/**
@@ -643,10 +643,10 @@ public abstract class MultiblockControllerBase {
 	 * @param x X coordinate of the block being tested
 	 * @param y Y coordinate of the block being tested
 	 * @param z Z coordinate of the block being tested
-	 * @return True if this block can be used as part of the sides.
+	 * @throws MultiblockValidationException if the tested block is not allowed on the machine's side faces
 	 */
-	protected boolean isBlockGoodForSides(World world, int x, int y, int z) {
-		return false;
+	protected void isBlockGoodForSides(World world, int x, int y, int z) throws MultiblockValidationException {
+		throw new MultiblockValidationException(String.format("%d, %d, %d - Block is not valid for use in the machine's interior", x, y, z));
 	}
 	
 	/**
@@ -655,10 +655,10 @@ public abstract class MultiblockControllerBase {
 	 * @param x X coordinate of the block being tested
 	 * @param y Y coordinate of the block being tested
 	 * @param z Z coordinate of the block being tested
-	 * @return True if this block can be used as part of the sides.
+	 * @throws MultiblockValidationException if the tested block is not allowed in the machine's interior
 	 */
-	protected boolean isBlockGoodForInterior(World world, int x, int y, int z) {
-		return false;
+	protected void isBlockGoodForInterior(World world, int x, int y, int z) throws MultiblockValidationException {
+		throw new MultiblockValidationException(String.format("%d, %d, %d - Block is not valid for use in the machine's interior", x, y, z));
 	}
 	
 	/**
