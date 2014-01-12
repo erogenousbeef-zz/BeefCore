@@ -354,6 +354,19 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 */
 	protected void detachSelf(boolean chunkUnloading) {
 		if(this.controller != null) {
+			if(controller.isDebugMode()) {
+				if(!chunkUnloading) {
+					String clientOrServer =  worldObj.isRemote?"CLIENT":"SERVER";
+					FMLLog.info("[%s] %d, %d, %d - Block detaching from machine due to user action", clientOrServer, xCoord, yCoord, zCoord);
+					FMLLog.info("--- DUMPING STACK ----");
+					for(StackTraceElement em : Thread.currentThread().getStackTrace()) {
+						FMLLog.info("[%s] %s", clientOrServer, em);
+					}
+				}
+				else
+					FMLLog.info("[%s] %d, %d, %d - Block detaching from machine due to a chunk unload", worldObj.isRemote?"CLIENT":"SERVER", xCoord, yCoord, zCoord);
+			}
+			
 			// Clean part out of controller
 			this.controller.detachBlock(this, chunkUnloading);
 

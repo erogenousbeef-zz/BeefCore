@@ -61,6 +61,8 @@ public abstract class MultiblockControllerBase {
 	 */
 	private MultiblockValidationException lastValidationException;
 	
+	protected boolean debugMode;
+	
 	protected MultiblockControllerBase(World world) {
 		// Multiblock stuff
 		worldObj = world;
@@ -73,8 +75,16 @@ public abstract class MultiblockControllerBase {
 
 		shouldCheckForDisconnections = true;
 		lastValidationException = null;
+		
+		debugMode = false;
 	}
 
+	public void setDebugMode(boolean active) {
+		debugMode = active;
+	}
+	
+	public boolean isDebugMode() { return debugMode; }
+	
 	/**
 	 * Call when a block with cached save-delegate data is added to the multiblock.
 	 * The part will be notified that the data has been used after this call completes.
@@ -176,6 +186,8 @@ public abstract class MultiblockControllerBase {
 		part.onDetached(this);
 		this.onBlockRemoved(part);
 		part.forfeitMultiblockSaveDelegate();
+
+		shouldCheckForDisconnections = true;
 	}
 	
 	/**
@@ -198,8 +210,6 @@ public abstract class MultiblockControllerBase {
 		if(referenceCoord != null && referenceCoord.equals(coord)) {
 			referenceCoord = null;
 		}
-
-		shouldCheckForDisconnections = true;
 
 		if(connectedBlocks.isEmpty()) {
 			// Destroy/unregister
@@ -419,6 +429,9 @@ public abstract class MultiblockControllerBase {
 		else if(oldState == AssemblyState.Assembled) {
 			// This will alter assembly state
 			disassembleMachine();
+			if(isDebugMode()) {
+				FMLLog.info("[%s] Machine %d is disassembling. Check above here for stacktraces indicating why this reactor broke.", worldObj.isRemote?"CLIENT":"SERVER", hashCode());
+			}
 		}
 		// Else Paused, do nothing
 	}
