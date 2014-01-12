@@ -32,6 +32,12 @@ public class CoordTriplet implements Comparable {
 		}
 	}
 	
+	public void translate(ForgeDirection dir) {
+		this.x += dir.offsetX;
+		this.y += dir.offsetY;
+		this.z += dir.offsetZ;
+	}
+	
 	public boolean equals(int x, int y, int z) {
 		return this.x == x && this.y == y && this.z == z;
 	}
@@ -47,6 +53,12 @@ public class CoordTriplet implements Comparable {
 
 	public CoordTriplet copy() {
 		return new CoordTriplet(x, y, z);
+	}
+	
+	public void copy(CoordTriplet other) {
+		this.x = other.x;
+		this.y = other.y;
+		this.z = other.z;
 	}
 
 	public CoordTriplet[] getNeighbors() {
