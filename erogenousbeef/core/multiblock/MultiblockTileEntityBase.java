@@ -215,23 +215,6 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	public void onMultiblockDataAssimilated() {
 		this.cachedMultiblockData = null;
 	}
-	
-	///// Validation Helpers (IMultiblockPart)
-	
-	@Override
-	public abstract void isGoodForFrame() throws MultiblockValidationException;
-
-	@Override
-	public abstract void isGoodForSides() throws MultiblockValidationException;
-
-	@Override
-	public abstract void isGoodForTop() throws MultiblockValidationException;
-
-	@Override
-	public abstract void isGoodForBottom() throws MultiblockValidationException;
-
-	@Override
-	public abstract void isGoodForInterior() throws MultiblockValidationException;
 
 	///// Game logic callbacks (IMultiblockPart)
 	

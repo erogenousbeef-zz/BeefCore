@@ -156,39 +156,6 @@ public interface IMultiblockPart {
 	 */
 	public void onMachineDeactivated();
 
-	// Multiblock Validation Helpers
-	
-	/**
-	 * Ensures this block can be used as a piece of the machine's frame. (Outer edges)
-	 * @throws A MultiblockValidationException indicating why this part was not OK for the frame.
-	 */
-	public void isGoodForFrame() throws MultiblockValidationException;
-	
-	/**
-	 * Ensures this block can be used on the north, east, south or west faces of the machine,
-	 * inside of the frame.
-	 * @throws A MultiblockValidationException indicating why this part was not OK for the side faces.
-	 */
-	public void isGoodForSides() throws MultiblockValidationException;
-	
-	/**
-	 * Ensures this block can be used on the top face of the machine, inside of the frame.
-	 * @throws A MultiblockValidationException indicating why this part was not OK for the top face.
-	 */
-	public void isGoodForTop() throws MultiblockValidationException;
-	
-	/**
-	 * Ensures this block can be used on the bottom face of the machine, inside of the frame.
-	 * @throws A MultiblockValidationException indicating why this part was not OK for the bottom face.
-	 */
-	public void isGoodForBottom() throws MultiblockValidationException;
-	
-	/**
-	 * Ensures this block can be used inside the machine.
-	 * @throws A MultiblockValidationException indicating why this part was not OK for the interior.
-	 */
-	public void isGoodForInterior() throws MultiblockValidationException;
-
 	// Block events
 	/**
 	 * Standard TileEntity method. 
