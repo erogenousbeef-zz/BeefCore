@@ -127,11 +127,6 @@ public class MultiblockWorldRegistry {
 					// This can occur on slow machines.
 					if(orphan.isInvalid()) { continue; }
 
-					if(worldObj.getBlockTileEntity(coord.x, coord.y, coord.z) != orphan) {
-						// This block has been replaced by another.
-						continue;
-					}
-					
 					// THIS IS THE ONLY PLACE WHERE PARTS ATTACH TO MACHINES
 					// Try to attach to a neighbor's master controller
 					compatibleControllers = orphan.attachToNeighbors();
