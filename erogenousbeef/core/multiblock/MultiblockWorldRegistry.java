@@ -44,6 +44,8 @@ public class MultiblockWorldRegistry {
 	// This can be added-to asynchronously via chunk loads!
 	private HashMap<Long, Set<IMultiblockPart>> partsAwaitingChunkLoad;
 	
+	private HashMap<CoordTriplet, IMultiblockPart> knownParts;
+	
 	// Mutexes to protect lists which may be changed due to asynchronous events, such as chunk loads
 	private Object partsAwaitingChunkLoadMutex;
 	private Object orphanedPartsMutex;
@@ -61,6 +63,8 @@ public class MultiblockWorldRegistry {
 		partsAwaitingChunkLoad = new HashMap<Long, Set<IMultiblockPart>>();
 		partsAwaitingChunkLoadMutex = new Object();
 		orphanedPartsMutex = new Object();
+		
+		knownParts = new HashMap<CoordTriplet, IMultiblockPart>();
 	}
 	
 	/**
@@ -123,6 +127,11 @@ public class MultiblockWorldRegistry {
 					// This can occur on slow machines.
 					if(orphan.isInvalid()) { continue; }
 
+					if(worldObj.getBlockTileEntity(coord.x, coord.y, coord.z) != orphan) {
+						// This block has been replaced by another.
+						continue;
+					}
+					
 					// THIS IS THE ONLY PLACE WHERE PARTS ATTACH TO MACHINES
 					// Try to attach to a neighbor's master controller
 					compatibleControllers = orphan.attachToNeighbors();
@@ -273,6 +282,17 @@ public class MultiblockWorldRegistry {
 	 */
 	public void onPartAdded(IMultiblockPart part) {
 		CoordTriplet worldLocation = part.getWorldLocation();
+		if(knownParts.containsKey(worldLocation) && part.hashCode() != knownParts.get(worldLocation).hashCode()) {
+			FMLLog.warning("[%s] Receiving a new part with the same coordinate as a known part @ %s. Old part hash: %d, new part hash %d", clientOrServer(), worldLocation, knownParts.get(worldLocation).hashCode(), part.hashCode());
+			// DUMP STACK
+			FMLLog.info("--- DEBUG: DUMPING STACK ----");
+			for(StackTraceElement em : Thread.currentThread().getStackTrace()) {
+				FMLLog.info("[%s] %s", clientOrServer(), em);
+			}
+		}
+
+		knownParts.put(worldLocation, part);
+		
 		if(!worldObj.getChunkProvider().chunkExists(worldLocation.getChunkX(), worldLocation.getChunkZ())) {
 			// Part goes into the waiting-for-chunk-load list
 			Set<IMultiblockPart> partSet;
@@ -315,6 +335,17 @@ public class MultiblockWorldRegistry {
 					}
 				}
 			}
+			
+			if(knownParts.containsKey(coord) && knownParts.get(coord).hashCode() != part.hashCode()) {
+				FMLLog.warning("[%s] Removing a part (%d) @ %s, which is known to be occupied by a different part (%d)", clientOrServer(), part.hashCode(), coord, knownParts.get(coord).hashCode());
+				FMLLog.info("--- DEBUG: DUMPING STACK ----");
+				for(StackTraceElement em : Thread.currentThread().getStackTrace()) {
+					FMLLog.info("[%s] %s", clientOrServer(), em);
+				}
+			}
+			else {
+				knownParts.remove(coord);
+			}
 		}
 
 		detachedParts.remove(part);
@@ -337,6 +368,7 @@ public class MultiblockWorldRegistry {
 		dirtyControllers.clear();
 		
 		detachedParts.clear();
+		knownParts.clear();
 		
 		synchronized(partsAwaitingChunkLoadMutex) {
 			partsAwaitingChunkLoad.clear();
@@ -403,4 +435,6 @@ public class MultiblockWorldRegistry {
 			orphanedParts.addAll(parts);
 		}
 	}
+	
+	private String clientOrServer() { return worldObj.isRemote ? "CLIENT" : "SERVER"; }
 }
