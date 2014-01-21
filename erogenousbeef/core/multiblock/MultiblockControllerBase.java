@@ -1,5 +1,6 @@
 package erogenousbeef.core.multiblock;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
@@ -30,6 +31,7 @@ public abstract class MultiblockControllerBase {
 	protected AssemblyState assemblyState;
 
 	protected Set<CoordTriplet> connectedBlocks;
+	protected HashMap<CoordTriplet, IMultiblockPart> connectedParts;
 	
 	/** This is a deterministically-picked coordinate that identifies this
 	 * multiblock uniquely in its dimension.
@@ -67,6 +69,8 @@ public abstract class MultiblockControllerBase {
 		// Multiblock stuff
 		worldObj = world;
 		connectedBlocks = new HashSet<CoordTriplet>();
+		connectedParts  = new HashMap<CoordTriplet, IMultiblockPart>();
+
 		referenceCoord = null;
 		assemblyState = AssemblyState.Disassembled;
 
@@ -98,7 +102,8 @@ public abstract class MultiblockControllerBase {
 	 * @return True if the tile entity at blockCoord is being tracked by this machine, false otherwise.
 	 */
 	public boolean hasBlock(CoordTriplet blockCoord) {
-		return connectedBlocks.contains(blockCoord);
+		//return connectedBlocks.contains(blockCoord);
+		return connectedParts.containsKey(blockCoord);
 	}
 	
 	/**
@@ -112,9 +117,20 @@ public abstract class MultiblockControllerBase {
 		// No need to re-add a block
 		if(connectedBlocks.contains(coord)) {
 			FMLLog.warning("[%s] Controller %s is double-adding a block @ %s. This is unusual. If you encounter odd behavior, please tear down the machine and rebuild it.", (worldObj.isRemote?"CLIENT":"SERVER"), hashCode(), coord);
+			
+			if(connectedParts.containsKey(coord)) {
+				if(connectedParts.get(coord) != part) {
+					FMLLog.warning("[%s] New part (%s) is dissimilar to old part (%s) - THIS IS PROBABLY VERY BAD", worldObj.isRemote?"CLIENT":"SERVER", part.hashCode(), connectedParts.get(coord).hashCode());
+				}
+				else {
+					FMLLog.warning("[%s] Duplicated parts are identical, this is probably OK", worldObj.isRemote?"CLIENT":"SERVER");
+				}
+			}
 		}
 
 		connectedBlocks.add(coord);
+		connectedParts.put(coord, part);
+		
 		part.onAttached(this);
 		this.onBlockAdded(part);
 		
@@ -203,9 +219,14 @@ public abstract class MultiblockControllerBase {
 			this.onMachinePaused();
 		}
 
+		if(connectedParts.containsKey(coord) && connectedParts.get(coord) != part) {
+			FMLLog.warning("[%s] Removing part (%d) but have logged another part (%d) at the same coordinate (%s)", worldObj.isRemote?"CLIENT":"SERVER", part.hashCode(), connectedParts.get(coord).hashCode(), coord);
+		}
+		
 		// Strip out this part
 		onDetachBlock(part);
 		connectedBlocks.remove(coord);
+		connectedParts.remove(coord);
 
 		if(referenceCoord != null && referenceCoord.equals(coord)) {
 			referenceCoord = null;
@@ -510,7 +531,8 @@ public abstract class MultiblockControllerBase {
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
 			if(te instanceof IMultiblockPart) {
 				acquiredPart = (IMultiblockPart)te;
-				this.connectedBlocks.add(coord);
+				connectedBlocks.add(coord);
+				connectedParts.put(coord, acquiredPart);
 				acquiredPart.onAssimilated(this);
 				this.onBlockAdded(acquiredPart);
 			}
@@ -536,7 +558,8 @@ public abstract class MultiblockControllerBase {
 			this.referenceCoord = null;
 		}
 
-		this.connectedBlocks.clear();
+		connectedBlocks.clear();
+		connectedParts.clear();
 	}
 	
 	/**
@@ -823,6 +846,8 @@ public abstract class MultiblockControllerBase {
 		}
 		
 		connectedBlocks.removeAll(deadCoords);
+		connectedParts.keySet().removeAll(deadCoords);
+
 		deadCoords.clear();
 		
 		if(referenceCoord == null || isEmpty()) {
@@ -879,7 +904,8 @@ public abstract class MultiblockControllerBase {
 		}
 
 		// Trim any blocks that were invalid, or were removed.
-		this.connectedBlocks.removeAll(deadCoords);
+		connectedBlocks.removeAll(deadCoords);
+		connectedParts.keySet().removeAll(deadCoords);
 		
 		// Cleanup. Not necessary, really.
 		deadCoords.clear();
@@ -910,8 +936,9 @@ public abstract class MultiblockControllerBase {
 				}
 			}
 		}
-		
+
 		connectedBlocks.clear();
+		connectedParts.clear();
 		return detachedParts;
 	}
 
