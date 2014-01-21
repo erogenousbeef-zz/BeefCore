@@ -120,7 +120,12 @@ public abstract class MultiblockControllerBase {
 			
 			if(connectedParts.containsKey(coord)) {
 				if(connectedParts.get(coord) != part) {
-					FMLLog.warning("[%s] New part (%s) is dissimilar to old part (%s) - THIS IS PROBABLY VERY BAD", worldObj.isRemote?"CLIENT":"SERVER", part.hashCode(), connectedParts.get(coord).hashCode());
+					FMLLog.severe("[%s] New part (%s) is dissimilar to old part (%s) - THIS IS PROBABLY VERY BAD", worldObj.isRemote?"CLIENT":"SERVER", part.hashCode(), connectedParts.get(coord).hashCode());
+					// DUMP STACK
+					FMLLog.severe("--- DEBUG: DUMPING STACK ----");
+					for(StackTraceElement em : Thread.currentThread().getStackTrace()) {
+						FMLLog.severe("[%s] %s", worldObj.isRemote?"CLIENT":"SERVER", em);
+					}
 				}
 				else {
 					FMLLog.warning("[%s] Duplicated parts are identical, this is probably OK", worldObj.isRemote?"CLIENT":"SERVER");
