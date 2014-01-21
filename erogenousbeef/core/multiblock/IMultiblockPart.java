@@ -3,34 +3,36 @@ package erogenousbeef.core.multiblock;
 import java.util.Set;
 
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import erogenousbeef.core.common.CoordTriplet;
 
 /**
- * Basic interface for a multiblock machine part. This should generally be 
- * implemented on a TileEntity. Better yet, derive from MultiblockTileEntityBase,
+ * Basic interface for a multiblock machine part. This is defined as an abstract class
+ * as we need the basic functionality of a TileEntity as well.
+ * Preferably, you should derive from MultiblockTileEntityBase,
  * which does all the hard work for you.
  * 
  * {@link erogenousbeef.core.multiblock.MultiblockTileEntityBase}
  */
-public interface IMultiblockPart {
+public abstract class IMultiblockPart extends TileEntity {
 	public static final int INVALID_DISTANCE = Integer.MAX_VALUE;
 	
 	/**
 	 * @return True if this block is connected to a multiblock controller. False otherwise.
 	 */
-	public boolean isConnected();
+	public abstract boolean isConnected();
 	
 	/**
 	 * @return The attached multiblock controller for this tile entity. 
 	 */
-	public MultiblockControllerBase getMultiblockController();
+	public abstract MultiblockControllerBase getMultiblockController();
 	
 	/**
 	 * Returns the location of this tile entity in the world, in CoordTriplet form.
 	 * @return A CoordTriplet with its x,y,z members set to the location of this tile entity in the world.
 	 */
-	public CoordTriplet getWorldLocation();
+	public abstract CoordTriplet getWorldLocation();
 	
 	// Multiblock connection-logic callbacks
 	
@@ -38,13 +40,13 @@ public interface IMultiblockPart {
 	 * Called after this block has been attached to a new multiblock controller.
 	 * @param newController The new multiblock controller to which this tile entity is attached.
 	 */
-	public void onAttached(MultiblockControllerBase newController);
+	public abstract void onAttached(MultiblockControllerBase newController);
 	
 	/**
 	 * Called after this block has been detached from a multiblock controller.
 	 * @param multiblockController The multiblock controller that no longer controls this tile entity.
 	 */
-	public void onDetached(MultiblockControllerBase multiblockController);
+	public abstract void onDetached(MultiblockControllerBase multiblockController);
 	
 	/**
 	 * Called when this block is being orphaned. Use this to copy game-data values that
@@ -55,7 +57,7 @@ public interface IMultiblockPart {
 	 * @param oldControllerSize The number of connected blocks in the controller prior to shedding orphans.
 	 * @param newControllerSize The number of connected blocks in the controller after shedding orphans.
 	 */
-	public void onOrphaned(MultiblockControllerBase oldController, int oldControllerSize, int newControllerSize);
+	public abstract void onOrphaned(MultiblockControllerBase oldController, int oldControllerSize, int newControllerSize);
 	
 	// Multiblock fuse/split helper methods. Here there be dragons.
 	/**
@@ -64,14 +66,14 @@ public interface IMultiblockPart {
 	 * Override this in your game code!
 	 * @return A new Multiblock Controller, derived from MultiblockControllerBase.
 	 */
-	public MultiblockControllerBase createNewMultiblock();
+	public abstract MultiblockControllerBase createNewMultiblock();
 
 	/**
 	 * Retrieve the type of multiblock controller which governs this part.
 	 * Used to ensure that incompatible multiblocks are not merged.
 	 * @return The class/type of the multiblock controller which governs this type of part.
 	 */
-	public Class<? extends MultiblockControllerBase> getMultiblockControllerType();
+	public abstract Class<? extends MultiblockControllerBase> getMultiblockControllerType();
 	
 	/**
 	 * Called when this block is moved from its current controller into a new controller.
@@ -79,7 +81,7 @@ public interface IMultiblockPart {
 	 * lots of recalculation logic.
 	 * @param newController The new controller into which this tile entity is being merged.
 	 */
-	public void onAssimilated(MultiblockControllerBase newController);
+	public abstract void onAssimilated(MultiblockControllerBase newController);
 
 	// Multiblock connection data access.
 	// You generally shouldn't toy with these!
@@ -88,34 +90,34 @@ public interface IMultiblockPart {
 	/**
 	 * Set that this block has been visited by your validation algorithms.
 	 */
-	public void setVisited();
+	public abstract void setVisited();
 	
 	/**
 	 * Set that this block has not been visited by your validation algorithms;
 	 */
-	public void setUnvisited();
+	public abstract void setUnvisited();
 	
 	/**
 	 * @return True if this block has been visited by your validation algorithms since the last reset.
 	 */
-	public boolean isVisited();
+	public abstract boolean isVisited();
 	
 	/**
 	 * Called when this block becomes the designated block for saving data and
 	 * transmitting data across the wire.
 	 */
-	public void becomeMultiblockSaveDelegate();
+	public abstract void becomeMultiblockSaveDelegate();
 	
 	/**
 	 * Called when this block is no longer the designated block for saving data
 	 * and transmitting data across the wire.
 	 */
-	public void forfeitMultiblockSaveDelegate();
+	public abstract void forfeitMultiblockSaveDelegate();
 
 	/**
 	 * Is this block the designated save/load & network delegate?
 	 */
-	public boolean isMultiblockSaveDelegate();	
+	public abstract boolean isMultiblockSaveDelegate();	
 
 	/**
 	 * Returns an array containing references to neighboring IMultiblockPart tile entities.
@@ -126,7 +128,7 @@ public interface IMultiblockPart {
 	 * Note that no method is chunk-safe on the client, because ChunkProviderClient is stupid.
 	 * @return An array of references to neighboring IMultiblockPart tile entities.
 	 */
-	public IMultiblockPart[] getNeighboringParts();
+	public abstract IMultiblockPart[] getNeighboringParts();
 
 	// Multiblock business-logic callbacks - implement these!
 	/**
@@ -136,25 +138,25 @@ public interface IMultiblockPart {
 	 * of the machine! They form an outer bounding box for the whole machine itself.
 	 * @param multiblockControllerBase The controller to which this part is being assembled.
 	 */
-	public void onMachineAssembled(MultiblockControllerBase multiblockControllerBase);
+	public abstract void onMachineAssembled(MultiblockControllerBase multiblockControllerBase);
 	
 	/**
 	 * Called when the machine is broken for game reasons, e.g. a player removed a block
 	 * or an explosion occurred.
 	 */
-	public void onMachineBroken();
+	public abstract void onMachineBroken();
 	
 	/**
 	 * Called when the user activates the machine. This is not called by default, but is included
 	 * as most machines have this game-logical concept.
 	 */
-	public void onMachineActivated();
+	public abstract void onMachineActivated();
 
 	/**
 	 * Called when the user deactivates the machine. This is not called by default, but is included
 	 * as most machines have this game-logical concept.
 	 */
-	public void onMachineDeactivated();
+	public abstract void onMachineDeactivated();
 
 	// Multiblock Validation Helpers
 	
@@ -162,40 +164,34 @@ public interface IMultiblockPart {
 	 * Ensures this block can be used as a piece of the machine's frame. (Outer edges)
 	 * @throws A MultiblockValidationException indicating why this part was not OK for the frame.
 	 */
-	public void isGoodForFrame() throws MultiblockValidationException;
+	public abstract void isGoodForFrame() throws MultiblockValidationException;
 	
 	/**
 	 * Ensures this block can be used on the north, east, south or west faces of the machine,
 	 * inside of the frame.
 	 * @throws A MultiblockValidationException indicating why this part was not OK for the side faces.
 	 */
-	public void isGoodForSides() throws MultiblockValidationException;
+	public abstract void isGoodForSides() throws MultiblockValidationException;
 	
 	/**
 	 * Ensures this block can be used on the top face of the machine, inside of the frame.
 	 * @throws A MultiblockValidationException indicating why this part was not OK for the top face.
 	 */
-	public void isGoodForTop() throws MultiblockValidationException;
+	public abstract void isGoodForTop() throws MultiblockValidationException;
 	
 	/**
 	 * Ensures this block can be used on the bottom face of the machine, inside of the frame.
 	 * @throws A MultiblockValidationException indicating why this part was not OK for the bottom face.
 	 */
-	public void isGoodForBottom() throws MultiblockValidationException;
+	public abstract void isGoodForBottom() throws MultiblockValidationException;
 	
 	/**
 	 * Ensures this block can be used inside the machine.
 	 * @throws A MultiblockValidationException indicating why this part was not OK for the interior.
 	 */
-	public void isGoodForInterior() throws MultiblockValidationException;
+	public abstract void isGoodForInterior() throws MultiblockValidationException;
 
 	// Block events
-	/**
-	 * Standard TileEntity method. 
-	 * @return The World object associated with this TileEntity
-	 */
-	public World getWorldObj();
-
 	/**
 	 * Called when this part should check its neighbors.
 	 * This method MUST NOT cause additional chunks to load.
@@ -203,33 +199,27 @@ public interface IMultiblockPart {
 	 * This part should inform the controller that it is attaching at this time.
 	 * @return A Set of multiblock controllers to which this object would like to attach. It should have attached to one of the controllers in this list. Return null if there are no compatible controllers nearby. 
 	 */
-	public Set<MultiblockControllerBase> attachToNeighbors();
+	public abstract Set<MultiblockControllerBase> attachToNeighbors();
 
 	/**
 	 * Assert that this part is detached. If not, log a warning and set the part's controller to null.
 	 * Do NOT fire the full disconnection logic.
 	 */
-	public void assertDetached();
+	public abstract void assertDetached();
 
 	/**
 	 * @return True if a part has multiblock game-data saved inside it.
 	 */
-	public boolean hasMultiblockSaveData();
+	public abstract boolean hasMultiblockSaveData();
 	
 	/**
 	 * @return The part's saved multiblock game-data in NBT format, or null if there isn't any.
 	 */
-	public NBTTagCompound getMultiblockSaveData();
+	public abstract NBTTagCompound getMultiblockSaveData();
 
 	/**
 	 * Called after a block is added and the controller has incorporated the part's saved
 	 * multiblock game-data into itself. Generally, you should clear the saved data here.
 	 */
-	void onMultiblockDataAssimilated();
-
-	/**
-	 * @return True if TileEntity.isInvalid() returns true.
-	 * @see net.minecraft.tileentity.isInvalid()
-	 */
-	public boolean isInvalid();
+	public abstract void onMultiblockDataAssimilated();
 }

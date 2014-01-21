@@ -18,7 +18,7 @@ import erogenousbeef.core.common.CoordTriplet;
  * Base logic class for Multiblock-connected tile entities. Most multiblock machines
  * should derive from this and implement their game logic in certain abstract methods.
  */
-public abstract class MultiblockTileEntityBase extends TileEntity implements IMultiblockPart {
+public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 	private MultiblockControllerBase controller;
 	private boolean visited;
 	
