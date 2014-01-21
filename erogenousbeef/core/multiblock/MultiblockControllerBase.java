@@ -751,6 +751,9 @@ public abstract class MultiblockControllerBase {
 		CoordTriplet myCoord = getReferenceCoord();
 		CoordTriplet theirCoord = otherController.getReferenceCoord();
 		
+		// Always consume other controllers if their reference coordinate is null - this means they're empty and can be assimilated on the cheap
+		if(theirCoord == null) { return true; }
+		
 		int res = myCoord.compareTo(theirCoord);
 		if(res < 0) { return true; }
 		else if(res > 0) { return false; }
