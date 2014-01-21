@@ -119,7 +119,10 @@ public class MultiblockWorldRegistry {
 					if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
 						continue;
 					}
-					
+
+					// This can occur on slow machines.
+					if(orphan.isInvalid()) { continue; }
+
 					// THIS IS THE ONLY PLACE WHERE PARTS ATTACH TO MACHINES
 					// Try to attach to a neighbor's master controller
 					compatibleControllers = orphan.attachToNeighbors();

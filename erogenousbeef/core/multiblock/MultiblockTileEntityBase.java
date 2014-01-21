@@ -372,9 +372,9 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 
 			// The above should call onDetached, but, just in case...
 			this.controller = null;
-
-			// Clean part out of lists in the registry
-			MultiblockRegistry.onPartRemovedFromWorld(worldObj, this);
 		}
+
+		// Clean part out of lists in the registry
+		MultiblockRegistry.onPartRemovedFromWorld(worldObj, this);
 	}
 }

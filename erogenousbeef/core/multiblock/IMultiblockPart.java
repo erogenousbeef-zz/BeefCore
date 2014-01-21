@@ -226,4 +226,10 @@ public interface IMultiblockPart {
 	 * multiblock game-data into itself. Generally, you should clear the saved data here.
 	 */
 	void onMultiblockDataAssimilated();
+
+	/**
+	 * @return True if TileEntity.isInvalid() returns true.
+	 * @see net.minecraft.tileentity.isInvalid()
+	 */
+	public boolean isInvalid();
 }
