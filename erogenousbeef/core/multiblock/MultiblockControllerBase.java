@@ -253,6 +253,7 @@ public abstract class MultiblockControllerBase {
 				// Check if TE has been removed for some reason, if so, we'll detach it soon.
 				TileEntity te = this.worldObj.getBlockTileEntity(connectedCoord.x, connectedCoord.y, connectedCoord.z);
 				if(te == null) { continue; }
+				if(te.isInvalid()) { continue; }
 
 				if(referenceCoord == null || connectedCoord.compareTo(referenceCoord) < 0) {
 					referenceCoord = connectedCoord;
@@ -529,7 +530,7 @@ public abstract class MultiblockControllerBase {
 		for(CoordTriplet coord : blocksToAcquire) {
 			// By definition, none of these can be the minimum block.
 			te = this.worldObj.getBlockTileEntity(coord.x, coord.y, coord.z);
-			if(te instanceof IMultiblockPart) {
+			if(te instanceof IMultiblockPart && !te.isInvalid()) {
 				acquiredPart = (IMultiblockPart)te;
 				connectedBlocks.add(coord);
 				connectedParts.put(coord, acquiredPart);
@@ -828,7 +829,7 @@ public abstract class MultiblockControllerBase {
 			}
 
 			te = this.worldObj.getBlockTileEntity(c.x, c.y, c.z);
-			if(!(te instanceof IMultiblockPart)) {
+			if(te == null || te.isInvalid() || !(te instanceof IMultiblockPart)) {
 				// This happens during chunk unload. Consider it valid, move on.
 				deadCoords.add(c);
 				continue;
