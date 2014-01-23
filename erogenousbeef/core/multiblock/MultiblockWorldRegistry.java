@@ -220,10 +220,6 @@ public class MultiblockWorldRegistry {
 				// they are no longer connected to this machine.
 				newlyDetachedParts = controller.checkForDisconnections();
 				
-				if(controller.isDebugMode()) {
-					FMLLog.info("[%s] Debugged controller %d has shed %d parts after checking for disconnections", worldObj.isRemote?"CLIENT":"SERVER", controller.hashCode(), newlyDetachedParts==null?0:newlyDetachedParts.size());
-				}
-				
 				if(!controller.isEmpty()) {
 					controller.recalculateMinMaxCoords();
 					controller.checkIfMachineIsWhole();

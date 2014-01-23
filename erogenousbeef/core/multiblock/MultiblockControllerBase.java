@@ -425,9 +425,6 @@ public abstract class MultiblockControllerBase {
 		else if(oldState == AssemblyState.Assembled) {
 			// This will alter assembly state
 			disassembleMachine();
-			if(isDebugMode()) {
-				FMLLog.info("[%s] Machine %d is disassembling. Check above here for stacktraces indicating why this reactor broke.", worldObj.isRemote?"CLIENT":"SERVER", hashCode());
-			}
 		}
 		// Else Paused, do nothing
 	}
@@ -741,7 +738,7 @@ public abstract class MultiblockControllerBase {
 		if(res < 0) { return true; }
 		else if(res > 0) { return false; }
 		else {
-			// TODO: Strip dead parts from both and retry
+			// Strip dead parts from both and retry
 			FMLLog.warning("[%s] Encountered two controllers with the same reference coordinate. Auditing connected parts and retrying.", worldObj.isRemote?"CLIENT":"SERVER");
 			auditParts();
 			otherController.auditParts();
