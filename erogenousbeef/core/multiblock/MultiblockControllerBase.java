@@ -139,6 +139,18 @@ public abstract class MultiblockControllerBase {
 			part.forfeitMultiblockSaveDelegate();
 		}
 		
+		if(minimumCoord != null) {
+			if(part.xCoord < minimumCoord.x) { minimumCoord.x = part.xCoord; }
+			if(part.yCoord < minimumCoord.y) { minimumCoord.y = part.yCoord; }
+			if(part.zCoord < minimumCoord.z) { minimumCoord.z = part.zCoord; }
+		}
+		
+		if(maximumCoord != null) {
+			if(part.xCoord > maximumCoord.x) { maximumCoord.x = part.xCoord; }
+			if(part.yCoord > maximumCoord.y) { maximumCoord.y = part.yCoord; }
+			if(part.zCoord > maximumCoord.z) { maximumCoord.z = part.zCoord; }
+		}
+		
 		MultiblockRegistry.addDirtyController(worldObj, this);
 	}
 
