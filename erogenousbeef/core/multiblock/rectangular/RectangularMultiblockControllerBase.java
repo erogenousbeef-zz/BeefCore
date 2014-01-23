@@ -18,7 +18,7 @@ public abstract class RectangularMultiblockControllerBase extends
 	 * @return True if the machine is "whole" and should be assembled. False otherwise.
 	 */
 	protected void isMachineWhole() throws MultiblockValidationException {
-		if(connectedBlocks.size() < getMinimumNumberOfBlocksForAssembledMachine()) {
+		if(connectedParts.size() < getMinimumNumberOfBlocksForAssembledMachine()) {
 			throw new MultiblockValidationException("Machine is too small.");
 		}
 		
@@ -47,15 +47,15 @@ public abstract class RectangularMultiblockControllerBase extends
 		// Now we run a simple check on each block within that volume.
 		// Any block deviating = NO DEAL SIR
 		TileEntity te;
-		IMultiblockPartRectangular part;
+		RectangularMultiblockTileEntityBase part;
 		for(int x = minimumCoord.x; x <= maximumCoord.x; x++) {
 			for(int y = minimumCoord.y; y <= maximumCoord.y; y++) {
 				for(int z = minimumCoord.z; z <= maximumCoord.z; z++) {
 					// Okay, figure out what sort of block this should be.
 					
 					te = this.worldObj.getBlockTileEntity(x, y, z);
-					if(te instanceof IMultiblockPartRectangular) {
-						part = (IMultiblockPartRectangular)te;
+					if(te instanceof RectangularMultiblockTileEntityBase) {
+						part = (RectangularMultiblockTileEntityBase)te;
 					}
 					else {
 						// This is permitted so that we can incorporate certain non-multiblock parts inside interiors

@@ -7,7 +7,7 @@ import erogenousbeef.core.multiblock.MultiblockTileEntityBase;
 import erogenousbeef.core.multiblock.MultiblockValidationException;
 
 public abstract class RectangularMultiblockTileEntityBase extends
-		MultiblockTileEntityBase implements IMultiblockPartRectangular {
+		MultiblockTileEntityBase {
 
 	PartPosition position;
 	ForgeDirection outwards;
@@ -20,12 +20,10 @@ public abstract class RectangularMultiblockTileEntityBase extends
 	}
 
 	// Positional Data
-	@Override
 	public ForgeDirection getOutwardsDir() {
 		return outwards;
 	}
 	
-	@Override
 	public PartPosition getPartPosition() {
 		return position;
 	}
@@ -96,19 +94,13 @@ public abstract class RectangularMultiblockTileEntityBase extends
 	}
 	
 	///// Validation Helpers (IMultiblockPart)
-	
-	@Override
 	public abstract void isGoodForFrame() throws MultiblockValidationException;
 
-	@Override
 	public abstract void isGoodForSides() throws MultiblockValidationException;
 
-	@Override
 	public abstract void isGoodForTop() throws MultiblockValidationException;
 
-	@Override
 	public abstract void isGoodForBottom() throws MultiblockValidationException;
 
-	@Override
 	public abstract void isGoodForInterior() throws MultiblockValidationException;
 }

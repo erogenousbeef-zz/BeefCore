@@ -156,7 +156,7 @@ public abstract class IMultiblockPart extends TileEntity {
 	 * Called when the user deactivates the machine. This is not called by default, but is included
 	 * as most machines have this game-logical concept.
 	 */
-	public void onMachineDeactivated();
+	public abstract void onMachineDeactivated();
 
 	// Block events
 	/**
