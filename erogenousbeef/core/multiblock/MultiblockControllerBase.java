@@ -730,7 +730,7 @@ public abstract class MultiblockControllerBase {
 		else if(res > 0) { return false; }
 		else {
 			// TODO: Strip dead parts from both and retry
-			FMLLog.warning("[%s] Encountered two controllers with the same reference coordinate. Auditing connected parts and retrying.");
+			FMLLog.warning("[%s] Encountered two controllers with the same reference coordinate. Auditing connected parts and retrying.", worldObj.isRemote?"CLIENT":"SERVER");
 			auditParts();
 			otherController.auditParts();
 			
