@@ -18,7 +18,7 @@ import erogenousbeef.core.common.CoordTriplet;
  * Base logic class for Multiblock-connected tile entities. Most multiblock machines
  * should derive from this and implement their game logic in certain abstract methods.
  */
-public abstract class MultiblockTileEntityBase extends TileEntity implements IMultiblockPart {
+public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 	private MultiblockControllerBase controller;
 	private boolean visited;
 	
@@ -337,27 +337,14 @@ public abstract class MultiblockTileEntityBase extends TileEntity implements IMu
 	 */
 	protected void detachSelf(boolean chunkUnloading) {
 		if(this.controller != null) {
-			if(controller.isDebugMode()) {
-				if(!chunkUnloading) {
-					String clientOrServer =  worldObj.isRemote?"CLIENT":"SERVER";
-					FMLLog.info("[%s] %d, %d, %d - Block detaching from machine due to user action", clientOrServer, xCoord, yCoord, zCoord);
-					FMLLog.info("--- DUMPING STACK ----");
-					for(StackTraceElement em : Thread.currentThread().getStackTrace()) {
-						FMLLog.info("[%s] %s", clientOrServer, em);
-					}
-				}
-				else
-					FMLLog.info("[%s] %d, %d, %d - Block detaching from machine due to a chunk unload", worldObj.isRemote?"CLIENT":"SERVER", xCoord, yCoord, zCoord);
-			}
-			
 			// Clean part out of controller
 			this.controller.detachBlock(this, chunkUnloading);
 
 			// The above should call onDetached, but, just in case...
 			this.controller = null;
-
-			// Clean part out of lists in the registry
-			MultiblockRegistry.onPartRemovedFromWorld(worldObj, this);
 		}
+
+		// Clean part out of lists in the registry
+		MultiblockRegistry.onPartRemovedFromWorld(worldObj, this);
 	}
 }

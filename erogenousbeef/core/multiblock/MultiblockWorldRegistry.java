@@ -119,6 +119,14 @@ public class MultiblockWorldRegistry {
 					if(!chunkProvider.chunkExists(coord.getChunkX(), coord.getChunkZ())) {
 						continue;
 					}
+
+					// This can occur on slow machines.
+					if(orphan.isInvalid()) { continue; }
+
+					if(worldObj.getBlockTileEntity(coord.x, coord.y, coord.z) != orphan) {
+						// This block has been replaced by another.
+						continue;
+					}
 					
 					// THIS IS THE ONLY PLACE WHERE PARTS ATTACH TO MACHINES
 					// Try to attach to a neighbor's master controller
@@ -212,10 +220,6 @@ public class MultiblockWorldRegistry {
 				// they are no longer connected to this machine.
 				newlyDetachedParts = controller.checkForDisconnections();
 				
-				if(controller.isDebugMode()) {
-					FMLLog.info("[%s] Debugged controller %d has shed %d parts after checking for disconnections", worldObj.isRemote?"CLIENT":"SERVER", controller.hashCode(), newlyDetachedParts==null?0:newlyDetachedParts.size());
-				}
-				
 				if(!controller.isEmpty()) {
 					controller.recalculateMinMaxCoords();
 					controller.checkIfMachineIsWhole();
@@ -270,6 +274,7 @@ public class MultiblockWorldRegistry {
 	 */
 	public void onPartAdded(IMultiblockPart part) {
 		CoordTriplet worldLocation = part.getWorldLocation();
+		
 		if(!worldObj.getChunkProvider().chunkExists(worldLocation.getChunkX(), worldLocation.getChunkZ())) {
 			// Part goes into the waiting-for-chunk-load list
 			Set<IMultiblockPart> partSet;
@@ -400,4 +405,6 @@ public class MultiblockWorldRegistry {
 			orphanedParts.addAll(parts);
 		}
 	}
+	
+	private String clientOrServer() { return worldObj.isRemote ? "CLIENT" : "SERVER"; }
 }

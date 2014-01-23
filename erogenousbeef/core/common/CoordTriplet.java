@@ -115,4 +115,14 @@ public class CoordTriplet implements Comparable {
 	public String toString() {
 		return String.format("(%d, %d, %d)", this.x, this.y, this.z);
 	}
+
+	public int compareTo(int xCoord, int yCoord, int zCoord) {
+		if(this.x < xCoord) { return -1; }
+		else if(this.x > xCoord) { return 1; }
+		else if(this.y < yCoord) { return -1; }
+		else if(this.y > yCoord) { return 1; }
+		else if(this.z < zCoord) { return -1; }
+		else if(this.z > zCoord) { return 1; }
+		else { return 0; }
+	}
 }
