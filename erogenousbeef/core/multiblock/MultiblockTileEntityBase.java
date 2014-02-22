@@ -325,9 +325,6 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 	
 	@Override
 	public void onOrphaned(MultiblockControllerBase controller, int oldSize, int newSize) {
-		NBTTagCompound data = new NBTTagCompound();
-		controller.getOrphanData(this, oldSize, newSize, data);
-		this.cachedMultiblockData = data;
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this);
 	}
 

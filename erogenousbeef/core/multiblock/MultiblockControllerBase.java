@@ -736,6 +736,7 @@ public abstract class MultiblockControllerBase {
 			}
 
 			part.setUnvisited();
+			part.forfeitMultiblockSaveDelegate();
 			
 			c = part.getWorldLocation();
 			if(referenceCoord == null) {
@@ -756,6 +757,9 @@ public abstract class MultiblockControllerBase {
 			shouldCheckForDisconnections = false;
 			MultiblockRegistry.addDeadController(worldObj, this);
 			return null;
+		}
+		else {
+			referencePart.becomeMultiblockSaveDelegate();
 		}
 
 		// Now visit all connected parts, breadth-first, starting from reference coord's part
@@ -832,16 +836,6 @@ public abstract class MultiblockControllerBase {
 		connectedParts = new HashSet<IMultiblockPart>();
 		return detachedParts;
 	}
-
-	/**
-	 * Called from a part that wishes to store data from this controller when it gets orphaned.
-	 * Generally, this data will be read back in during onAddedPartWithMultiblockData().
-	 * @param newOrphan The part being orphaned.
-	 * @param oldSize The size of the controller before detaching orphans.
-	 * @param newSize The size of the controller after detaching orphans.
-	 * @param dataContainer An NBT Compound Tag into which to write data.
-	 */
-	public abstract void getOrphanData(IMultiblockPart newOrphan, int oldSize, int newSize, NBTTagCompound dataContainer);
 
 	/**
 	 * @return True if this multiblock machine is considered assembled and ready to go.
