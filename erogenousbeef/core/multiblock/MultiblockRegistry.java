@@ -3,7 +3,7 @@ package erogenousbeef.core.multiblock;
 import java.util.HashMap;
 
 import net.minecraft.world.World;
-import cpw.mods.fml.common.FMLLog;
+import erogenousbeef.core.common.BeefCoreLog;
 
 /**
  * This is a very static singleton registry class which directs incoming events to sub-objects, which
@@ -110,7 +110,7 @@ public class MultiblockRegistry {
 			registries.get(world).addDeadController(controller);
 		}
 		else {
-			FMLLog.warning("Controller %d in world %s marked as dead, but that world is not tracked! Controller is being ignored.", controller.hashCode(), world);
+			BeefCoreLog.warning("Controller %d in world %s marked as dead, but that world is not tracked! Controller is being ignored.", controller.hashCode(), world);
 		}
 	}
 	

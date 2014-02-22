@@ -1,7 +1,6 @@
 package erogenousbeef.core.multiblock;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,7 +11,7 @@ import java.util.Set;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.IChunkProvider;
-import cpw.mods.fml.common.FMLLog;
+import erogenousbeef.core.common.BeefCoreLog;
 import erogenousbeef.core.common.CoordTriplet;
 
 /**
@@ -192,7 +191,7 @@ public class MultiblockWorldRegistry {
 				}
 				
 				if(newMaster == null) {
-					FMLLog.severe("Multiblock system checked a merge pool of size %d, found no master candidates. This should never happen.", mergePool.size());
+					BeefCoreLog.severe("Multiblock system checked a merge pool of size %d, found no master candidates. This should never happen.", mergePool.size());
 				}
 				else {
 					// Merge all the other machines into the master machine, then unregister them
@@ -243,7 +242,7 @@ public class MultiblockWorldRegistry {
 				// Go through any controllers which have marked themselves as potentially dead.
 				// Validate that they are empty/dead, then unregister them.
 				if(!controller.isEmpty()) {
-					FMLLog.severe("Found a non-empty controller. Forcing it to shed its blocks and die. This should never happen!");
+					BeefCoreLog.severe("Found a non-empty controller. Forcing it to shed its blocks and die. This should never happen!");
 					detachedParts.addAll(controller.detachAllBlocks());
 				}
 

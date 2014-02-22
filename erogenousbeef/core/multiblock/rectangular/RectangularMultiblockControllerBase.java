@@ -3,7 +3,6 @@ package erogenousbeef.core.multiblock.rectangular;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import erogenousbeef.core.common.CoordTriplet;
-import erogenousbeef.core.multiblock.IMultiblockPart;
 import erogenousbeef.core.multiblock.MultiblockControllerBase;
 import erogenousbeef.core.multiblock.MultiblockValidationException;
 

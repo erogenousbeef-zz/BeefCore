@@ -11,7 +11,7 @@ import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.Packet132TileEntityData;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.chunk.IChunkProvider;
-import cpw.mods.fml.common.FMLLog;
+import erogenousbeef.core.common.BeefCoreLog;
 import erogenousbeef.core.common.CoordTriplet;
 
 /**
@@ -76,7 +76,7 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 	@Override
 	public void assertDetached() {
 		if(this.controller != null) {
-			FMLLog.info("[assert] Part @ (%d, %d, %d) should be detached already, but detected that it was not. This is not a fatal error, and will be repaired, but is unusual.", xCoord, yCoord, zCoord);
+			BeefCoreLog.info("[assert] Part @ (%d, %d, %d) should be detached already, but detected that it was not. This is not a fatal error, and will be repaired, but is unusual.", xCoord, yCoord, zCoord);
 			this.controller = null;
 		}
 	}
