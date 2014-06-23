@@ -47,6 +47,8 @@ public abstract class RectangularMultiblockControllerBase extends
 		// Any block deviating = NO DEAL SIR
 		TileEntity te;
 		RectangularMultiblockTileEntityBase part;
+		Class<? extends RectangularMultiblockControllerBase> myClass = this.getClass();
+
 		for(int x = minimumCoord.x; x <= maximumCoord.x; x++) {
 			for(int y = minimumCoord.y; y <= maximumCoord.y; y++) {
 				for(int z = minimumCoord.z; z <= maximumCoord.z; z++) {
@@ -55,6 +57,12 @@ public abstract class RectangularMultiblockControllerBase extends
 					te = this.worldObj.getBlockTileEntity(x, y, z);
 					if(te instanceof RectangularMultiblockTileEntityBase) {
 						part = (RectangularMultiblockTileEntityBase)te;
+						
+						// Ensure this part should actually be allowed within a cube of this controller's type
+						if(!myClass.equals(part.getMultiblockControllerType()))
+						{
+							throw new MultiblockValidationException(String.format("Part @ %d, %d, %d is incompatible with machines of type %s", x, y, z, myClass.getSimpleName()));
+						}
 					}
 					else {
 						// This is permitted so that we can incorporate certain non-multiblock parts inside interiors
