@@ -127,7 +127,7 @@ public abstract class MultiblockControllerBase {
 			part.becomeMultiblockSaveDelegate();
 		}
 		else if(coord.compareTo(referenceCoord) < 0) {
-			TileEntity te = this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+			TileEntity te = this.worldObj.getTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
 			((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
 			
 			referenceCoord = coord;
@@ -400,7 +400,7 @@ public abstract class MultiblockControllerBase {
 	private void _onAssimilated(MultiblockControllerBase otherController) {
 		if(referenceCoord != null) {
 			if(worldObj.getChunkProvider().chunkExists(referenceCoord.getChunkX(), referenceCoord.getChunkZ())) {
-				TileEntity te = this.worldObj.getBlockTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+				TileEntity te = this.worldObj.getTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
 				if(te instanceof IMultiblockPart) {
 					((IMultiblockPart)te).forfeitMultiblockSaveDelegate();
 				}
@@ -431,7 +431,7 @@ public abstract class MultiblockControllerBase {
 	/**
 	 * Driver for the update loop. If the machine is assembled, runs
 	 * the game logic update method.
-	 * @see erogenousbeef.core.multiblock.MultiblockControllerBase#update()
+	 * @see erogenousbeef.core.multiblock.MultiblockControllerBase#update() //TODO Fix this Javadoc
 	 */
 	public final void updateMultiblockEntity() {
 		if(connectedParts.isEmpty()) {
@@ -600,13 +600,13 @@ public abstract class MultiblockControllerBase {
 
 	/**
 	 * Called when the save delegate's tile entity is being asked for its description packet
-	 * @param tag A fresh compound tag to write your multiblock data into
+	 * @param data A fresh compound tag to write your multiblock data into
 	 */
 	public abstract void formatDescriptionPacket(NBTTagCompound data);
 
 	/**
 	 * Called when the save delegate's tile entity receiving a description packet
-	 * @param tag A compound tag containing multiblock data to import
+	 * @param data A compound tag containing multiblock data to import
 	 */
 	public abstract void decodeDescriptionPacket(NBTTagCompound data);
 
@@ -644,8 +644,8 @@ public abstract class MultiblockControllerBase {
 			if(res < 0) { return true; }
 			else if(res > 0) { return false; }
 			else {
-				BeefCoreLog.severe("My Controller (%d): size (%d), parts: %s", hashCode(), connectedParts.size(), getPartsListString());
-				BeefCoreLog.severe("Other Controller (%d): size (%d), coords: %s", otherController.hashCode(), otherController.connectedParts.size(), otherController.getPartsListString());
+				BeefCoreLog.error("My Controller (%d): size (%d), parts: %s", hashCode(), connectedParts.size(), getPartsListString());
+				BeefCoreLog.error("Other Controller (%d): size (%d), coords: %s", otherController.hashCode(), otherController.connectedParts.size(), otherController.getPartsListString());
 				throw new IllegalArgumentException("[" + (worldObj.isRemote?"CLIENT":"SERVER") + "] Two controllers with the same reference coord that somehow both have valid parts - this should never happen!"); 
 			}
 
@@ -681,7 +681,7 @@ public abstract class MultiblockControllerBase {
 	private void auditParts() {
 		HashSet<IMultiblockPart> deadParts = new HashSet<IMultiblockPart>();
 		for(IMultiblockPart part : connectedParts) {
-			if(part.isInvalid() || worldObj.getBlockTileEntity(part.xCoord, part.yCoord, part.zCoord) != part) {
+			if(part.isInvalid() || worldObj.getTileEntity(part.xCoord, part.yCoord, part.zCoord) != part) {
 				onDetachBlock(part);
 				deadParts.add(part);
 			}
@@ -727,7 +727,7 @@ public abstract class MultiblockControllerBase {
 				continue;
 			}
 			
-			if(worldObj.getBlockTileEntity(part.xCoord, part.yCoord, part.zCoord) != part) {
+			if(worldObj.getTileEntity(part.xCoord, part.yCoord, part.zCoord) != part) {
 				deadParts.add(part);
 				onDetachBlock(part);
 				continue;

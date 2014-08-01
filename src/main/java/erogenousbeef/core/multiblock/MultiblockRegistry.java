@@ -39,8 +39,8 @@ public class MultiblockRegistry {
 	/**
 	 * Called when the world has finished loading a chunk.
 	 * @param world The world which has finished loading a chunk
-	 * @param hashedChunkCoord The hashed XZ coordinates of the chunk.
-	 * @param zPosition 
+	 * @param chunkX The X coordinate of the chunk
+	 * @param chunkZ The Z coordinate of the chunk
 	 */
 	public static void onChunkLoaded(World world, int chunkX, int chunkZ) {
 		if(registries.containsKey(world)) {
@@ -51,7 +51,6 @@ public class MultiblockRegistry {
 	/**
 	 * Register a new part in the system. The part has been created either through user action or via a chunk loading.
 	 * @param world The world into which this part is loading.
-	 * @param chunkCoord The chunk at which this part is located.
 	 * @param part The part being loaded.
 	 */
 	public static void onPartAdded(World world, IMultiblockPart part) {
@@ -61,7 +60,7 @@ public class MultiblockRegistry {
 	
 	/**
 	 * Call to remove a part from world lists.
-	 * @param worldObj The world from which a multiblock part is being removed.
+	 * @param world The world from which a multiblock part is being removed.
 	 * @param part The part being removed.
 	 */
 	public static void onPartRemovedFromWorld(World world, IMultiblockPart part) {

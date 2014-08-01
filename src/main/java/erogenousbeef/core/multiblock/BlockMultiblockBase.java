@@ -9,7 +9,7 @@ import net.minecraft.block.material.Material;
  */
 public abstract class BlockMultiblockBase extends BlockContainer {
 
-	protected BlockMultiblockBase(int par1, Material par2Material) {
-		super(par1, par2Material);
+	protected BlockMultiblockBase(Material material) {
+		super(material);
 	}
 }
