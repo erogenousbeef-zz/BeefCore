@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Set;
 
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.INetworkManager;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.Packet132TileEntityData;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.Packet;
+import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.chunk.IChunkProvider;
 import erogenousbeef.core.common.BeefCoreLog;
@@ -101,7 +101,7 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 		if(isMultiblockSaveDelegate() && isConnected()) {
 			NBTTagCompound multiblockData = new NBTTagCompound();
 			this.controller.writeToNBT(multiblockData);
-			data.setCompoundTag("multiblockData", multiblockData);
+			data.setTag("multiblockData", multiblockData);
 		}
 	}
 		
@@ -158,12 +158,12 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 	public Packet getDescriptionPacket() {
 		NBTTagCompound packetData = new NBTTagCompound();
 		encodeDescriptionPacket(packetData);
-		return new Packet132TileEntityData(xCoord, yCoord, zCoord, 0, packetData);
+		return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 0, packetData);
 	}
 	
 	@Override
-	public void onDataPacket(INetworkManager network, Packet132TileEntityData packet) {
-		decodeDescriptionPacket(packet.data);
+	public void onDataPacket(NetworkManager network, S35PacketUpdateTileEntity packet) {
+		decodeDescriptionPacket(packet.func_148857_g());
 	}
 	
 	///// Things to override in most implementations (IMultiblockPart)
@@ -178,7 +178,7 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 		if(this.isMultiblockSaveDelegate() && isConnected()) {
 			NBTTagCompound tag = new NBTTagCompound();
 			getMultiblockController().formatDescriptionPacket(tag);
-			packetData.setCompoundTag("multiblockData", tag);
+			packetData.setTag("multiblockData", tag);
 		}
 	}
 	
@@ -314,7 +314,7 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 				continue;
 			}
 
-			te = this.worldObj.getBlockTileEntity(neighbor.x, neighbor.y, neighbor.z);
+			te = this.worldObj.getTileEntity(neighbor.x, neighbor.y, neighbor.z);
 			if(te instanceof IMultiblockPart) {
 				neighborParts.add((IMultiblockPart)te);
 			}

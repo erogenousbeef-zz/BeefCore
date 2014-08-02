@@ -64,7 +64,6 @@ public class MultiblockWorldRegistry {
 	
 	/**
 	 * Called before Tile Entities are ticked in the world. Run gamelogic.
-	 * @param world The world being ticked
 	 */
 	public void tickStart() {
 		if(controllers.size() > 0) {
@@ -86,7 +85,6 @@ public class MultiblockWorldRegistry {
 	
 	/**
 	 * Called after Tile Entities are ticked in the world. Do bookkeeping.
-	 * @param world The world being ticked
 	 */
 	public void tickEnd() {
 		IChunkProvider chunkProvider = worldObj.getChunkProvider();
@@ -122,7 +120,7 @@ public class MultiblockWorldRegistry {
 					// This can occur on slow machines.
 					if(orphan.isInvalid()) { continue; }
 
-					if(worldObj.getBlockTileEntity(coord.x, coord.y, coord.z) != orphan) {
+					if(worldObj.getTileEntity(coord.x, coord.y, coord.z) != orphan) {
 						// This block has been replaced by another.
 						continue;
 					}
@@ -191,7 +189,7 @@ public class MultiblockWorldRegistry {
 				}
 				
 				if(newMaster == null) {
-					BeefCoreLog.severe("Multiblock system checked a merge pool of size %d, found no master candidates. This should never happen.", mergePool.size());
+					BeefCoreLog.fatal("Multiblock system checked a merge pool of size %d, found no master candidates. This should never happen.", mergePool.size());
 				}
 				else {
 					// Merge all the other machines into the master machine, then unregister them
@@ -242,7 +240,7 @@ public class MultiblockWorldRegistry {
 				// Go through any controllers which have marked themselves as potentially dead.
 				// Validate that they are empty/dead, then unregister them.
 				if(!controller.isEmpty()) {
-					BeefCoreLog.severe("Found a non-empty controller. Forcing it to shed its blocks and die. This should never happen!");
+					BeefCoreLog.fatal("Found a non-empty controller. Forcing it to shed its blocks and die. This should never happen!");
 					detachedParts.addAll(controller.detachAllBlocks());
 				}
 
