@@ -2,7 +2,6 @@ package erogenousbeef.core.multiblock;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.relauncher.Side;
 
 /**
  * This is a generic multiblock tick handler. If you are using this code on your own,

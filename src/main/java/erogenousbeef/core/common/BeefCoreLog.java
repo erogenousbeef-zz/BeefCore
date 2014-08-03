@@ -1,20 +1,16 @@
 package erogenousbeef.core.common;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import cpw.mods.fml.common.FMLLog;
 
 public class BeefCoreLog {
+	
+	private static final String CHANNEL = "BeefCore";
 
-    private static Logger log;
-	
-	public BeefCoreLog() {
-		log = LogManager.getLogger("BeefCore");
-	}
-	
     public static void log(Level level, String format, Object... data)
     {
-    	log.log(level, format, data);
+    	FMLLog.log(level, format, data);
     }
 
     public static void fatal(String format, Object... data)
