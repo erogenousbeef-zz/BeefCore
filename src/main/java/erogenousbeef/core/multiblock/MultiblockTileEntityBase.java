@@ -325,7 +325,17 @@ public abstract class MultiblockTileEntityBase extends IMultiblockPart {
 	
 	@Override
 	public void onOrphaned(MultiblockControllerBase controller, int oldSize, int newSize) {
+		this.markDirty();
 		worldObj.markTileEntityChunkModified(xCoord, yCoord, zCoord, this);
+	}
+	
+	//// Helper functions for notifying neighboring blocks
+	protected void notifyNeighborsOfBlockChange() {
+		worldObj.notifyBlocksOfNeighborChange(xCoord, yCoord, zCoord, getBlockType());
+	}
+	
+	protected void notifyNeighborsOfTileChange() {
+		worldObj.func_147453_f(xCoord, yCoord, zCoord, getBlockType());
 	}
 
 	///// Private/Protected Logic Helpers
