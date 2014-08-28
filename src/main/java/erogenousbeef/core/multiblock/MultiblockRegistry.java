@@ -1,6 +1,7 @@
 package erogenousbeef.core.multiblock;
 
 import java.util.HashMap;
+import java.util.Set;
 
 import net.minecraft.world.World;
 import erogenousbeef.core.common.BeefCoreLog;
@@ -111,6 +112,17 @@ public class MultiblockRegistry {
 		else {
 			BeefCoreLog.warning("Controller %d in world %s marked as dead, but that world is not tracked! Controller is being ignored.", controller.hashCode(), world);
 		}
+	}
+
+	/**
+	 * @param world The world whose controllers you wish to retrieve.
+	 * @return An unmodifiable set of controllers active in the given world, or null if there are none.
+	 */
+	public static Set<MultiblockControllerBase> getControllersFromWorld(World world) {
+		if(registries.containsKey(world)) {
+			return registries.get(world).getControllers();
+		}
+		return null;
 	}
 	
 	/// *** PRIVATE HELPERS *** ///

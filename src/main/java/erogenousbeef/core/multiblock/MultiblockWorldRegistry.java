@@ -389,6 +389,16 @@ public class MultiblockWorldRegistry {
 		this.dirtyControllers.add(dirtyController);
 	}
 	
+	/**
+	 * Use this only if you know what you're doing. You should rarely need to iterate
+	 * over all controllers in a world!
+	 * 
+	 * @return An (unmodifiable) set of controllers which are active in this world.
+	 */
+	public Set<MultiblockControllerBase> getControllers() {
+		return Collections.unmodifiableSet(controllers);
+	}
+
 	/* *** PRIVATE HELPERS *** */
 	
 	private void addOrphanedPartThreadsafe(IMultiblockPart part) {
