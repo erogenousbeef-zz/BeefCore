@@ -864,4 +864,42 @@ public abstract class MultiblockControllerBase {
 		}
 	}
 	
+	/**
+	 * Marks the reference coord dirty & updateable.
+	 * 
+	 * On the server, this will mark the for a data-update, so that
+	 * nearby clients will receive an updated description packet from the server
+	 * after a short time. The block's chunk will also be marked dirty and the
+	 * block's chunk will be saved to disk the next time chunks are saved.
+	 * 
+	 * On the client, this will mark the block for a rendering update.
+	 */
+	protected void markReferenceCoordForUpdate() {
+		CoordTriplet rc = getReferenceCoord();
+		if(worldObj != null && rc != null) {
+			worldObj.markBlockForUpdate(rc.x, rc.y, rc.z);
+		}
+	}
+	
+	/**
+	 * Marks the reference coord dirty.
+	 * 
+	 * On the server, this marks the reference coord's chunk as dirty; the block (and chunk)
+	 * will be saved to disk the next time chunks are saved. This does NOT mark it dirty for
+	 * a description-packet update.
+	 * 
+	 * On the client, does nothing.
+	 * @see MultiblockControllerBase#markReferenceCoordForUpdate()
+	 */
+	protected void markReferenceCoordDirty() {
+		if(worldObj == null || worldObj.isRemote) { return; }
+
+		CoordTriplet referenceCoord = getReferenceCoord();
+		if(referenceCoord == null) { return; }
+
+		TileEntity saveTe = worldObj.getTileEntity(referenceCoord.x, referenceCoord.y, referenceCoord.z);
+		worldObj.markTileEntityChunkModified(referenceCoord.x, referenceCoord.y, referenceCoord.z, saveTe);
+	}
+
+	
 }
