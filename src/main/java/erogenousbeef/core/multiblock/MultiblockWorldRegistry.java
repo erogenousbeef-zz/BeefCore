@@ -63,7 +63,7 @@ public class MultiblockWorldRegistry {
 	}
 	
 	/**
-	 * Called before Tile Entities are ticked in the world. Run gamelogic.
+	 * Called before Tile Entities are ticked in the world. Run game logic.
 	 */
 	public void tickStart() {
 		if(controllers.size() > 0) {
@@ -84,9 +84,9 @@ public class MultiblockWorldRegistry {
 	}
 	
 	/**
-	 * Called after Tile Entities are ticked in the world. Do bookkeeping.
+	 * Called prior to processing multiblock controllers. Do bookkeeping.
 	 */
-	public void tickEnd() {
+	public void processMultiblockChanges() {
 		IChunkProvider chunkProvider = worldObj.getChunkProvider();
 		CoordTriplet coord;
 
